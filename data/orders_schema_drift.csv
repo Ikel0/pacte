@@ -1,0 +1,3 @@
+order_id,customer_id,order_date,amount_eur,status,currency
+ord-1001,cust-24,2026-08-01,89.90,paid,EUR
+ord-1002,cust-81,2026-08-01,120.00,paid,EUR

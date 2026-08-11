@@ -1,0 +1,8 @@
+[project]
+name = "pacte"
+version = "0.1.0"
+description = "A local data contract control plane."
+requires-python = ">=3.11"
+
+[project.scripts]
+pacte = "pacte.server:main"

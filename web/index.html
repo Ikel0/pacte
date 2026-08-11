@@ -1,0 +1,6 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Pacte</title><link rel="stylesheet" href="style.css"></head>
+<body><main><header><p>PACTE / DATA CONTRACT CONTROL</p><h1>Avant d’entrer,<br><i>on se met d’accord.</i></h1><div id="contract"></div></header>
+<section class="run"><div><label for="batch">LOT À CONTRÔLER</label><select id="batch"></select></div><button id="validate">Valider le lot <b>↗</b></button></section>
+<section id="result" hidden><div class="decision"><p>DÉCISION D’INGESTION</p><strong id="decision"></strong><span id="score"></span></div><div class="columns"><div><h2>Contrôles</h2><div id="issues"></div></div><div><h2>Impact aval</h2><div id="impact"></div></div></div></section>
+<section class="audit"><p>JOURNAL D’AUDIT</p><div id="history"></div></section><footer>SCHEMA · QUALITY · IMPACT · AUDIT <a href="https://github.com/Ikel0">Ikel Ouedraogo</a></footer></main><script src="app.js"></script></body></html>
