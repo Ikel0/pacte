@@ -7,6 +7,8 @@ Pacte is a small **data contract control plane**. Before a batch reaches a data 
 3. What will be affected if it is accepted anyway?
 4. Who can understand the decision later?
 
+**Live demo:** https://pacte-ikel.onrender.com
+
 The project validates CSV batches against versioned contracts, detects schema drift and quality failures, maps downstream impact, and records each ingestion decision in a local SQLite audit log.
 
 ## Run locally
