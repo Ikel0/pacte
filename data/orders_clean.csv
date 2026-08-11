@@ -1,0 +1,5 @@
+order_id,customer_id,order_date,amount_eur,status
+ord-1001,cust-24,2026-08-01,89.90,paid
+ord-1002,cust-81,2026-08-01,120.00,paid
+ord-1003,cust-24,2026-08-02,42.50,refunded
+ord-1004,cust-45,2026-08-02,16.00,pending
