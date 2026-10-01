@@ -1,6 +1,156 @@
 <!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Pacte</title><link rel="stylesheet" href="style.css"></head>
-<body><main><header><p>PACTE / DATA CONTRACT CONTROL</p><h1>Avant d’entrer,<br><i>on se met d’accord.</i></h1><div id="contract"></div></header>
-<section class="run"><div><label for="batch">LOT À CONTRÔLER</label><select id="batch"></select></div><button id="validate">Valider le lot <b>↗</b></button></section>
-<section id="result" hidden><div class="decision"><p>DÉCISION D’INGESTION</p><strong id="decision"></strong><span id="score"></span></div><div class="columns"><div><h2>Contrôles</h2><div id="issues"></div></div><div><h2>Impact aval</h2><div id="impact"></div></div></div></section>
-<section class="audit"><p>JOURNAL D’AUDIT</p><div id="history"></div></section><footer>SCHEMA · QUALITY · IMPACT · AUDIT <a href="https://github.com/Ikel0">Ikel Ouedraogo</a></footer></main><script src="app.js"></script></body></html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Pacte vérifie un lot de données contre un contrat versionné, explicite les contrôles et rend l'impact aval lisible."
+    />
+    <title>Pacte | Data contract control</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#workbench">Aller au contrôle du lot</a>
+    <main>
+      <header class="masthead">
+        <div class="brand-line">
+          <a class="brand" href="/" aria-label="Pacte, accueil">
+            <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span>PACTE</span>
+          </a>
+          <p class="mode"><span aria-hidden="true"></span> Contrôle d'admission</p>
+        </div>
+
+        <div class="masthead-grid">
+          <div class="masthead-copy">
+            <p class="eyebrow">Data contract control</p>
+            <h1>Avant d'entrer,<br /><em>on se met d'accord.</em></h1>
+            <p class="lede">
+              Un sas de qualité pour décider, avec les équipes data, si un lot peut rejoindre la plateforme.
+            </p>
+          </div>
+
+          <aside class="contract-card" aria-labelledby="contract-title">
+            <p class="section-label">Contrat actif</p>
+            <h2 id="contract-title">Chargement du contrat</h2>
+            <p id="contractDescription" class="contract-description">Lecture des règles de qualité et de lineage.</p>
+            <dl class="contract-facts" id="contractFacts"></dl>
+          </aside>
+        </div>
+      </header>
+
+      <section class="contract-brief" aria-labelledby="contract-brief-title">
+        <div class="section-heading">
+          <div>
+            <p class="section-label">Accord de données</p>
+            <h2 id="contract-brief-title">Ce qui est attendu à l'entrée</h2>
+          </div>
+          <p id="contractVersion" class="version-chip">Version en chargement</p>
+        </div>
+        <div id="contractControls" class="control-grid" aria-live="polite">
+          <p class="loading-copy">Chargement des contrôles du contrat...</p>
+        </div>
+      </section>
+
+      <section class="workbench" id="workbench" aria-labelledby="run-title">
+        <div class="section-heading workbench-heading">
+          <div>
+            <p class="section-label">Point de contrôle</p>
+            <h2 id="run-title">Valider un lot avant ingestion</h2>
+          </div>
+          <p class="workbench-note">Aucune donnée personnelle n'est saisie ici. Le lot de démonstration choisi est évalué contre le contrat actif.</p>
+        </div>
+
+        <div class="run-card">
+          <div class="batch-picker">
+            <label for="batch">Lot source</label>
+            <select id="batch" aria-describedby="batchHelp"></select>
+            <small id="batchHelp">Jeux de données de démonstration inclus dans le projet.</small>
+          </div>
+          <button id="validate" type="button">
+            <span>Contrôler le lot</span>
+            <i aria-hidden="true">↗</i>
+          </button>
+        </div>
+        <p class="request-status" id="requestStatus" role="status" aria-live="polite"></p>
+      </section>
+
+      <section id="result" class="result" hidden aria-labelledby="decision-title">
+        <div class="decision-card" id="decisionCard">
+          <div class="decision-heading">
+            <div>
+              <p class="section-label">Décision d'ingestion</p>
+              <h2 id="decision-title">Décision calculée</h2>
+            </div>
+            <span id="decisionState" class="decision-state">En attente</span>
+          </div>
+          <div class="decision-body">
+            <strong id="decision">En attente</strong>
+            <p id="decisionExplanation">Le verdict et ses critères apparaîtront ici.</p>
+          </div>
+          <dl class="decision-facts" id="decisionFacts"></dl>
+        </div>
+
+        <div class="result-grid">
+          <section class="detail-panel" aria-labelledby="checks-title">
+            <div class="panel-heading">
+              <div>
+                <p class="section-label">Contrôles exécutés</p>
+                <h2 id="checks-title">Pourquoi cette décision</h2>
+              </div>
+              <span id="checksSummary" class="panel-summary"></span>
+            </div>
+            <div id="issues" class="check-list" aria-live="polite"></div>
+          </section>
+
+          <section class="detail-panel impact-panel" aria-labelledby="impact-title">
+            <div class="panel-heading">
+              <div>
+                <p class="section-label">Lineage</p>
+                <h2 id="impact-title">Impact aval</h2>
+              </div>
+              <span class="panel-summary">Actifs dépendants</span>
+            </div>
+            <p class="impact-intro">La décision est traduite en conséquence opérationnelle pour chaque actif consommateur.</p>
+            <div id="impact" class="impact-list" aria-live="polite"></div>
+          </section>
+        </div>
+
+        <section class="receipt" aria-labelledby="receipt-title">
+          <div class="receipt-mark" aria-hidden="true">✓</div>
+          <div>
+            <p class="section-label">Reçu d'audit</p>
+            <h2 id="receipt-title">Validation prête à être tracée</h2>
+            <p id="receiptText">Le résultat sera ajouté au journal d'audit local une fois le contrôle terminé.</p>
+          </div>
+          <span id="receiptId" class="receipt-id">En attente</span>
+        </section>
+      </section>
+
+      <section class="audit" aria-labelledby="audit-title">
+        <div class="section-heading audit-heading">
+          <div>
+            <p class="section-label">Journal d'audit</p>
+            <h2 id="audit-title">Décisions récentes</h2>
+          </div>
+          <button id="refreshAudit" class="refresh-button" type="button">Actualiser</button>
+        </div>
+        <div class="audit-table-labels" aria-hidden="true">
+          <span>Date</span><span>Lot</span><span>Décision</span><span>Score</span>
+        </div>
+        <div id="history" class="audit-list" aria-live="polite">
+          <p class="loading-copy">Chargement du journal...</p>
+        </div>
+      </section>
+
+      <footer>
+        <p>Schema · Quality · Impact · Audit</p>
+        <p>Un prototype de contrôle explicite pour les équipes data.</p>
+        <a href="https://github.com/Ikel0">Ikel Ouedraogo</a>
+      </footer>
+    </main>
+    <script src="app.js" defer></script>
+  </body>
+</html>
