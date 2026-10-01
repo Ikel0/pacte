@@ -1,70 +1,66 @@
 # Pacte
 
-Pacte is a compact **data admission gate** for batch pipelines. Before an order extract can be published, it answers four practical questions:
+Pacte est une démo locale de contrôle de lots CSV avant ingestion. Elle part d’un cas précis : un export quotidien de commandes peut changer sans prévenir, alors que des tableaux et traitements attendent encore l’ancien format.
 
-1. Does the file still satisfy the agreed contract?
-2. Which controls failed, and how many records do they affect?
-3. Which declared consumers must stop or wait for review?
-4. Can someone reproduce the decision later from the exact input and contract?
+Le projet ne cherche pas à simuler une plateforme de gouvernance entière. Il montre une décision simple et reproductible sur un fichier donné : admettre, demander une revue ou écarter le lot.
 
-**Live demo:** https://pacte-ikel.onrender.com
+## Les scénarios fournis
 
-The project validates CSV batches against a versioned contract, detects schema drift and quality failures, maps the downstream consequence, and stores an idempotent SQLite audit receipt. It is deliberately small enough to read end to end while retaining the pieces teams need to discuss in a real data platform.
+- **Export commandes : conforme** : le fichier respecte les règles déclarées.
+- **Export commandes : valeurs et clés invalides** : une date et une clé métier posent problème, le lot est écarté.
+- **Export commandes : colonne inattendue** : l’évolution est visible, mais aucune publication automatique n’est autorisée avant revue.
 
-## What happens to a batch
+Chaque scénario utilise des données synthétiques incluses dans le dépôt.
+
+## Ce qui est réellement contrôlé
+
+- en-têtes manquants, dupliqués ou inattendus ;
+- lignes vides ou valeurs sans en-tête ;
+- champs obligatoires, types, bornes et valeurs autorisées ;
+- unicité de la clé métier ;
+- présence de lignes dans le lot ;
+- empreinte SHA-256 du fichier brut et du contrat évalué ;
+- reçu local idempotent : rejouer exactement le même fichier avec le même contrat retrouve le même run.
+
+Les conséquences affichées viennent de la liste de consommateurs déclarée dans le contrat. Elles ne constituent pas une découverte automatique de dépendances.
+
+## Les trois décisions
 
 ```text
-CSV input + versioned contract
-        -> schema, validity, key and volume controls
-        -> admission decision
-        -> declared consumer impact
-        -> immutable receipt for this exact input
+accept      le lot respecte le contrat, la démo autoriserait la publication
+review      un écart non bloquant doit être compris par le propriétaire avant publication
+quarantine  un contrôle bloquant échoue, le lot est maintenu à l’écart
 ```
 
-The gate is intentionally conservative:
+Le prototype calcule et enregistre cette décision. Il n’écrit pas dans une table métier, n’arrête pas de job et n’envoie pas d’alerte externe.
 
-- `accept`: publication may proceed.
-- `accept_with_warnings`: publication pauses for contract-owner review.
-- `quarantine`: publication is closed and critical or high-tier consumers are blocked.
-
-The demo records that decision and its intended impact. It does not execute a production write or stop a real scheduler, which keeps the boundary explicit and safe.
-
-## What is checked
-
-- contract configuration is validated on startup, including owner, semantic version, field definitions and declared consumers;
-- required fields, types, numeric bounds, allowed values and business-key uniqueness;
-- duplicate or missing headers, rows with values outside the declared schema, empty input and unexpected columns;
-- a SHA-256 fingerprint of both the raw batch and the evaluated contract;
-- a deterministic run ID and idempotent audit receipt, so repeating an unchanged validation does not silently add another decision;
-- a lineage plan showing whether each declared consumer is clear, under review or blocked.
-
-## Run locally
+## Lancer localement
 
 ```bash
 cd pacte
 PYTHONPATH=src python3 -m pacte.server
 ```
 
-Open `http://localhost:8090`, choose one of the three supplied batches and inspect the controls, consumer impact and receipt.
+Ouvrir ensuite `http://localhost:8090`, choisir un des trois exports, puis lire les règles déclenchées, les conséquences déclarées et le reçu local.
 
-## Test it
+## Vérifier le projet
 
 ```bash
 PYTHONPATH=src python3 -m unittest discover -s tests -v
 ```
 
-The suite covers clean admission, schema drift, data-quality quarantine, empty input, invalid contracts and idempotent receipts.
+La suite couvre le lot conforme, la dérive de schéma, les erreurs de qualité, un lot vide, un contrat invalide et l’idempotence du reçu.
 
-## API
+## API de démonstration
 
-- `GET /api/health` exposes the loaded contract version and fingerprint.
-- `GET /api/overview` exposes the demo contract, available batches and recent receipts.
-- `GET /api/audit` returns compact receipt history.
-- `GET /api/runs/{run_id}` retrieves one reproducible validation record.
-- `POST /api/validate` with `{ "batch": "orders_clean.csv" }` runs the admission gate.
+- `GET /api/health` expose la version et l’empreinte du contrat chargé.
+- `GET /api/overview` retourne le contrat, les lots fournis et les derniers reçus locaux.
+- `GET /api/audit` retourne l’historique compact des exécutions.
+- `GET /api/runs/{run_id}` retrouve une exécution précise.
+- `POST /api/validate` avec `{ "batch": "orders_clean.csv" }` lance les contrôles sur un lot inclus dans `data/`.
 
-## Project boundary
+## Limites assumées
 
-This is a personal project, not a claim that SQLite replaces a governance platform. In a team environment, the same decision object could be emitted by an orchestrator, stored in a shared audit system, linked to a catalog and routed to the owner through alerting. The point of Pacte is to make an implicit upstream assumption explicit, testable and explainable before downstream tables become unreliable.
+Le SLA de fraîcheur est déclaré dans le contrat, mais non mesuré : les CSV de démonstration ne contiennent pas d’horodatage de livraison fiable. SQLite est suffisant pour inspecter le comportement localement, pas pour conserver un audit d’équipe durable. Une évolution réaliste demanderait un manifeste de livraison, une revue avec auteur et raison, un stockage partagé et une stratégie d’alerte.
 
-The accompanying [working paper](docs/working-paper.md) documents the choices, trade-offs and next experiments.
+La [fiche de travail](docs/working-paper.md) décrit les compromis et les prochaines questions.

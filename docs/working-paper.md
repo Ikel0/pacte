@@ -28,7 +28,7 @@ contrat versionné
     = décision d'admission + impact + reçu d'audit
 ```
 
-La décision n'est pas qu'une étiquette visuelle. `accept` autorise une publication, `accept_with_warnings` demande une revue avant publication et `quarantine` ferme la porte aux consommateurs critiques et à fort impact. Dans l'application de démonstration, ce plan d'impact est calculé et audité. Il ne lance volontairement aucune écriture ou suspension de job réel.
+La décision n'est pas qu'une étiquette visuelle. `accept` autorise une publication, `review` demande une revue avant publication et `quarantine` ferme la porte aux consommateurs critiques et à fort impact. Dans l'application de démonstration, ce plan d'impact est calculé et audité. Il ne lance volontairement aucune écriture ou suspension de job réel.
 
 ## Pourquoi les reçus comptent
 
@@ -52,7 +52,7 @@ La suite locale couvre les comportements qui seraient coûteux à découvrir dan
 - un fichier vide, une ligne qui dépasse le schéma ou un contrat mal formé échouent avant publication ;
 - un reçu est idempotent pour une entrée identique.
 
-Les contrôles sont séparés par famille : schéma, validité des champs, clés métier et volume. Cette séparation est plus utile qu'un score seul lorsque l'équipe doit choisir la bonne action.
+Les contrôles sont séparés par famille : schéma, validité des champs, clés métier et volume. Cette séparation est plus utile qu'une note unique lorsque l'équipe doit choisir la bonne action.
 
 ## Compromis assumés
 
@@ -64,7 +64,7 @@ La fraîcheur est déclarée dans le contrat mais pas encore vérifiée contre u
 
 1. Comment versionner proprement les évolutions compatibles de schéma et leur période de dépréciation ?
 2. Comment transmettre un événement de réception avec un horodatage de source vérifiable pour contrôler la fraîcheur ?
-3. Comment diffuser le plan d'impact à une personne métier sans lui demander de connaître le lineage technique ?
+3. Comment diffuser les conséquences déclarées à une personne métier sans lui demander de connaître le graphe technique complet ?
 4. Comment signer ou externaliser les reçus d'audit lorsqu'ils deviennent des objets de conformité ?
 
 ## Critère de réussite

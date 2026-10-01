@@ -1,4 +1,4 @@
-"""Translate an ingestion decision into a deliberately small lineage plan."""
+"""Translate an ingestion decision into declared consumer consequences."""
 from __future__ import annotations
 
 from typing import Any
@@ -13,7 +13,7 @@ def gate_for(decision: str) -> dict[str, object]:
             "requires_review": False,
             "message": "Le lot peut être publié vers les consommateurs déclarés.",
         }
-    if decision == "accept_with_warnings":
+    if decision == "review":
         return {
             "state": "review",
             "allows_write": False,

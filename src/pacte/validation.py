@@ -109,8 +109,7 @@ def validate_batch(path: Path, contract: dict[str, Any]) -> dict[str, Any]:
 
     critical = [item for item in issues if item["severity"] == "critical"]
     warnings = [item for item in issues if item["severity"] == "warning"]
-    decision = "quarantine" if critical else "accept_with_warnings" if warnings else "accept"
-    score = max(0, 100 - 25 * len(critical) - 8 * len(warnings))
+    decision = "quarantine" if critical else "review" if warnings else "accept"
     controls = [
         _control("schema", "Schéma", issues),
         _control("field", "Validité des champs", issues),
@@ -127,12 +126,12 @@ def validate_batch(path: Path, contract: dict[str, Any]) -> dict[str, Any]:
         "rows": len(rows),
         "headers": headers,
         "decision": decision,
-        "score": score,
         "issues": issues,
         "controls": controls,
         "summary": {
             "critical": len(critical),
             "warnings": len(warnings),
             "checks": len(controls),
+            "affected_values": sum(issue["affected"] for issue in issues),
         },
     }

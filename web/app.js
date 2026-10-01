@@ -14,6 +14,7 @@
     decisionExplanation: document.getElementById("decisionExplanation"),
     decisionFacts: document.getElementById("decisionFacts"),
     decisionState: document.getElementById("decisionState"),
+    freshnessNote: document.getElementById("freshnessNote"),
     history: document.getElementById("history"),
     impact: document.getElementById("impact"),
     issues: document.getElementById("issues"),
@@ -26,12 +27,12 @@
   };
 
   const labels = {
-    accept: "Accepté",
-    accept_with_warnings: "Accepté sous réserve",
-    quarantine: "Quarantaine",
+    accept: "Admis",
+    review: "Revue requise",
+    accept_with_warnings: "Revue requise",
+    quarantine: "Refusé",
     blocked: "Bloqué",
     clear: "Autorisé",
-    review: "À examiner",
     open: "Ouverte",
     closed: "Fermée",
     critical: "Critique",
@@ -96,9 +97,13 @@
     elements.contractFacts.append(
       fact("Version", `v${contract.version || "?"}`),
       fact("Responsable", contract.owner || "Non attribué"),
-      fact("Fraîcheur", contract.freshness_hours ? `${contract.freshness_hours} h` : "Non définie"),
+      fact("SLA déclaré", contract.freshness_hours ? `${contract.freshness_hours} h` : "Non défini"),
       fact("Champs", Array.isArray(contract.fields) ? contract.fields.length : 0)
     );
+
+    elements.freshnessNote.textContent = contract.freshness_hours
+      ? `SLA déclaré : ${contract.freshness_hours} h. Mesure indisponible : les CSV de démonstration ne portent pas d’horodatage de livraison.`
+      : "Aucun SLA de fraîcheur n’est déclaré dans ce contrat.";
 
     clear(elements.contractControls);
     const fields = Array.isArray(contract.fields) ? contract.fields : [];
@@ -107,21 +112,42 @@
       return;
     }
 
+    const typeLabels = { string: "texte", number: "nombre", date: "date" };
+    const table = element("table", { className: "contract-table" });
+    const head = element("thead");
+    const header = element("tr");
+    for (const label of ["Champ", "Type", "Règles"]) {
+      header.append(element("th", { text: label, attributes: { scope: "col" } }));
+    }
+    head.append(header);
+    const body = element("tbody");
+
     for (const field of fields) {
-      const card = element("article", { className: "contract-control" });
-      const required = field.required ? "Obligatoire" : "Optionnel";
       const constraints = [];
-      if (field.unique) constraints.push("unique");
+      constraints.push(field.required ? "obligatoire" : "optionnel");
+      if (field.unique) constraints.push("clé unique");
       if (field.min !== undefined) constraints.push(`minimum ${field.min}`);
       if (Array.isArray(field.allowed)) constraints.push(`${field.allowed.length} valeurs admises`);
+      const row = element("tr");
       append(
-        card,
-        element("strong", { text: field.name || "champ" }),
-        element("p", { text: `${field.type || "type non défini"}${constraints.length ? ` · ${constraints.join(", ")}` : ""}` }),
-        element("span", { className: `field-mark${field.required ? " is-required" : ""}`, text: required })
+        row,
+        element("th", { text: field.name || "champ", attributes: { scope: "row" } }),
+        element("td", { text: typeLabels[field.type] || "non défini" }),
+        element("td", { text: constraints.join(", ") })
       );
-      elements.contractControls.append(card);
+      body.append(row);
     }
+    table.append(head, body);
+    elements.contractControls.append(table);
+  }
+
+  function batchLabel(batch) {
+    const labels = {
+      "orders_clean.csv": "Export commandes : conforme",
+      "orders_quality_issues.csv": "Export commandes : valeurs et clés invalides",
+      "orders_schema_drift.csv": "Export commandes : colonne inattendue",
+    };
+    return labels[batch] || batch;
   }
 
   function renderBatches(batches) {
@@ -136,7 +162,7 @@
     }
     elements.batch.disabled = false;
     for (const batch of list) {
-      elements.batch.append(element("option", { text: batch, attributes: { value: batch } }));
+      elements.batch.append(element("option", { text: batchLabel(batch), attributes: { value: batch } }));
     }
   }
 
@@ -202,9 +228,9 @@
   }
 
   function explanationFor(decision, issueCount) {
-    if (decision === "quarantine") return "Le lot reste hors de la plateforme : un contrôle critique du contrat n'est pas satisfait.";
-    if (decision === "accept_with_warnings") return `Le lot attend une revue : ${issueCount} écart(s) non bloquant(s) reste(nt) visible(s).`;
-    return "Le lot satisfait les règles définies dans le contrat et peut rejoindre les actifs aval.";
+    if (decision === "quarantine") return "Le lot est écarté : au moins une règle bloquante du contrat n’est pas satisfaite.";
+    if (decision === "review") return `Le lot attend une revue : ${issueCount} écart(s) doit ou doivent être compris avant toute publication.`;
+    return "Le lot respecte les règles déclarées par le contrat. La démo autoriserait la publication.";
   }
 
   function renderDecision(data, auditEntry) {
@@ -214,21 +240,22 @@
     const criticalCount = issues.filter((issue) => issue.severity === "critical").length;
     const controls = Array.isArray(data.controls) ? data.controls : [];
     const gate = data.gate && typeof data.gate === "object" ? data.gate : {};
-    const gateState = String(gate.state || decision || "review");
+    const summary = data.summary && typeof data.summary === "object" ? data.summary : {};
+    const passedControls = controls.filter((control) => control.state === "passed").length;
+    const action = decision === "accept" ? "admettre" : decision === "review" ? "faire revoir" : "écarter";
 
     elements.decisionCard.className = `decision-card is-${decision.replaceAll("_", "-")}`;
     elements.decision.textContent = words(decision);
-    elements.decisionState.textContent = decision ? `Porte : ${words(gateState)}` : "En attente";
+    elements.decisionState.textContent = decision ? `Action : ${action}` : "En attente";
     elements.decisionExplanation.textContent = gate.message || explanationFor(decision, issues.length);
     clear(elements.decisionFacts);
     elements.decisionFacts.append(
-      fact("Score qualité", `${data.score ?? "?"}/100`),
+      fact("Contrôles", controls.length ? `${passedControls}/${controls.length}` : "?"),
       fact("Lignes contrôlées", data.rows ?? "?"),
-      fact("Version du contrat", `v${data.contract_version || "?"}`),
-      fact("Écriture", gate.allows_write ? "Autorisée" : "Suspendue")
+      fact("Écarts", `${summary.critical || 0} bloquant(s), ${summary.warnings || 0} à revoir`),
+      fact("Responsable", data.contract_owner || "non attribué")
     );
 
-    const passedControls = controls.filter((control) => control.state === "passed").length;
     elements.checksSummary.textContent = controls.length ? `${passedControls}/${controls.length} validés` : issues.length ? `${issues.length} écart(s)` : "Aucun écart";
     clear(elements.issues);
     if (controls.length) {
@@ -250,7 +277,7 @@
     const receiptLabel = receipt?.run_id || receipt?.id ? `Reçu ${receipt.run_id || `#${receipt.id}`}` : "Audit local";
     elements.receiptId.textContent = receiptLabel;
     elements.receiptText.textContent = receipt
-      ? `Lot ${data.batch} contrôlé le ${receipt.recorded_at || receipt.created_at}. Décision ${words(decision).toLowerCase()}, score ${data.score}/100, ${criticalCount} contrôle(s) critique(s).${receipt.payload_hash ? ` Empreinte ${receipt.payload_hash.slice(0, 12)}.` : ""}`
+      ? `Lot ${batchLabel(data.batch)} contrôlé le ${receipt.recorded_at || receipt.created_at}. Décision : ${words(decision).toLowerCase()}. ${criticalCount} contrôle(s) bloquant(s), ${summary.affected_values || 0} valeur(s) signalée(s).${receipt.payload_hash ? ` Empreinte ${receipt.payload_hash.slice(0, 12)}.` : ""}`
       : `Lot ${data.batch} contrôlé. Le journal d'audit local est actualisé après chaque décision.`;
     elements.result.hidden = false;
     elements.result.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -262,8 +289,9 @@
     const batch = element("strong", { text: run.batch || "Lot inconnu" });
     const decision = String(run.decision || "");
     const status = element("span", { className: `audit-decision is-${decision.replaceAll("_", "-")}`, text: words(decision) });
-    const score = element("span", { text: run.score !== undefined ? `${run.score}/100` : "Score inconnu" });
-    return append(row, time, batch, status, score);
+    const summary = run.summary && typeof run.summary === "object" ? run.summary : {};
+    const issues = element("span", { text: summary.critical || summary.warnings ? `${summary.critical || 0} bloquant(s), ${summary.warnings || 0} à revoir` : "aucun écart" });
+    return append(row, time, batch, status, issues);
   }
 
   function renderHistory(runs) {
@@ -307,10 +335,10 @@
   async function validateBatch() {
     if (!elements.batch.value) return;
     const label = elements.validate.querySelector("span");
-    const originalLabel = label?.textContent || "Contrôler le lot";
+    const originalLabel = label?.textContent || "Lancer les contrôles";
     elements.validate.disabled = true;
     if (label) label.textContent = "Contrôle en cours";
-    setStatus("Évaluation du lot contre le contrat actif...");
+    setStatus("Contrôle du lot contre le contrat actif...");
 
     try {
       const data = await request("/api/validate", {
@@ -322,7 +350,7 @@
       renderHistory(audit);
       const receipt = audit.find((entry) => entry.batch === data.batch && entry.decision === data.decision) || audit[0];
       renderDecision(data, receipt);
-      setStatus("Contrôle terminé. La décision et son reçu sont disponibles.");
+      setStatus("Contrôle terminé. La décision et le reçu local sont disponibles.");
     } catch (error) {
       setStatus(`Le contrôle a échoué : ${error.message}`, true);
     } finally {
