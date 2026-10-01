@@ -1,4 +1,4 @@
-"""Append-only, idempotent receipts for Pacte validation runs."""
+"""Local, idempotent receipts for Pacte validation runs."""
 from __future__ import annotations
 
 import hashlib
@@ -16,6 +16,7 @@ def _payload_hash(payload: dict[str, Any]) -> str:
 class AuditLog:
     def __init__(self, database: Path) -> None:
         self.database = database
+        self._legacy_score = False
         self.database.parent.mkdir(parents=True, exist_ok=True)
         self._init_schema()
 
@@ -37,11 +38,11 @@ class AuditLog:
                 contract_version TEXT NOT NULL,
                 contract_fingerprint TEXT,
                 decision TEXT NOT NULL,
-                score INTEGER NOT NULL,
                 payload_hash TEXT,
                 payload TEXT NOT NULL)"""
             )
             existing = {row["name"] for row in conn.execute("PRAGMA table_info(validation_runs)").fetchall()}
+            self._legacy_score = "score" in existing
             for name, definition in (
                 ("run_id", "TEXT"),
                 ("batch_fingerprint", "TEXT"),
@@ -63,23 +64,38 @@ class AuditLog:
             ).fetchone()
             replayed = existing is not None
             if existing is None:
+                fields = [
+                    "run_id",
+                    "batch",
+                    "batch_fingerprint",
+                    "contract_name",
+                    "contract_version",
+                    "contract_fingerprint",
+                    "decision",
+                    "payload_hash",
+                    "payload",
+                ]
+                values: list[object] = [
+                    result["run_id"],
+                    result["batch"],
+                    result["batch_fingerprint"],
+                    result["contract"],
+                    result["contract_version"],
+                    result["contract_fingerprint"],
+                    result["decision"],
+                    payload_hash,
+                    payload,
+                ]
+                # Databases created before the score was removed retain a
+                # non-null column. It is populated with a neutral legacy value
+                # but is no longer exposed or used to make a decision.
+                if self._legacy_score:
+                    fields.append("score")
+                    values.append(0)
+                placeholders = ", ".join("?" for _ in fields)
                 cursor = conn.execute(
-                    """INSERT INTO validation_runs(
-                    run_id, batch, batch_fingerprint, contract_name, contract_version,
-                    contract_fingerprint, decision, score, payload_hash, payload
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                    (
-                        result["run_id"],
-                        result["batch"],
-                        result["batch_fingerprint"],
-                        result["contract"],
-                        result["contract_version"],
-                        result["contract_fingerprint"],
-                        result["decision"],
-                        result["score"],
-                        payload_hash,
-                        payload,
-                    ),
+                    f"INSERT INTO validation_runs({', '.join(fields)}) VALUES ({placeholders})",
+                    values,
                 )
                 row = conn.execute(
                     "SELECT id, created_at, payload_hash FROM validation_runs WHERE id = ?", (cursor.lastrowid,)
@@ -98,10 +114,17 @@ class AuditLog:
         with self.connect() as conn:
             rows = conn.execute(
                 """SELECT id, created_at, run_id, batch, contract_name, contract_version,
-                decision, score, payload_hash FROM validation_runs ORDER BY id DESC LIMIT ?""",
+                decision, payload_hash, payload FROM validation_runs ORDER BY id DESC LIMIT ?""",
                 (limit,),
             ).fetchall()
-        return [dict(row) for row in rows]
+        receipts: list[dict[str, object]] = []
+        for row in rows:
+            receipt = dict(row)
+            payload = json.loads(str(receipt.pop("payload")))
+            summary = payload.get("summary") if isinstance(payload, dict) else None
+            receipt["summary"] = summary if isinstance(summary, dict) else {}
+            receipts.append(receipt)
+        return receipts
 
     def get(self, run_id: str) -> dict[str, Any] | None:
         with self.connect() as conn:

@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="Pacte vérifie un lot de données contre un contrat versionné, explicite les contrôles et rend l'impact aval lisible."
+      content="Pacte contrôle des exports CSV de démonstration avant une ingestion et rend la décision lisible."
     />
-    <title>Pacte | Data contract control</title>
+    <title>Pacte | Contrôle de lot avant ingestion</title>
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="style.css" />
   </head>
@@ -20,22 +20,22 @@
             <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
             <span>PACTE</span>
           </a>
-          <p class="mode"><span aria-hidden="true"></span> Contrôle d'admission</p>
+          <p class="mode"><span aria-hidden="true"></span> Démonstration locale</p>
         </div>
 
         <div class="masthead-grid">
           <div class="masthead-copy">
-            <p class="eyebrow">Data contract control</p>
-            <h1>Avant d'entrer,<br /><em>on se met d'accord.</em></h1>
+            <p class="eyebrow">Contrat de données</p>
+            <h1>Vérifier un lot avant ingestion</h1>
             <p class="lede">
-              Un sas de qualité pour décider, avec les équipes data, si un lot peut rejoindre la plateforme.
+              Trois exports de commandes permettent de voir ce qui est accepté, ce qui doit être revu et ce qui doit rester de côté.
             </p>
           </div>
 
           <aside class="contract-card" aria-labelledby="contract-title">
             <p class="section-label">Contrat actif</p>
             <h2 id="contract-title">Chargement du contrat</h2>
-            <p id="contractDescription" class="contract-description">Lecture des règles de qualité et de lineage.</p>
+            <p id="contractDescription" class="contract-description">Lecture des règles locales du contrat.</p>
             <dl class="contract-facts" id="contractFacts"></dl>
           </aside>
         </div>
@@ -44,23 +44,24 @@
       <section class="contract-brief" aria-labelledby="contract-brief-title">
         <div class="section-heading">
           <div>
-            <p class="section-label">Accord de données</p>
-            <h2 id="contract-brief-title">Ce qui est attendu à l'entrée</h2>
+            <p class="section-label">Règles du contrat</p>
+            <h2 id="contract-brief-title">Ce que l’export doit respecter</h2>
           </div>
           <p id="contractVersion" class="version-chip">Version en chargement</p>
         </div>
-        <div id="contractControls" class="control-grid" aria-live="polite">
+        <div id="contractControls" class="contract-table-wrap" aria-live="polite">
           <p class="loading-copy">Chargement des contrôles du contrat...</p>
         </div>
+        <p id="freshnessNote" class="contract-note">La fraîcheur est déclarée dans le contrat, mais les CSV fournis ne contiennent pas d’horodatage de livraison.</p>
       </section>
 
       <section class="workbench" id="workbench" aria-labelledby="run-title">
         <div class="section-heading workbench-heading">
           <div>
-            <p class="section-label">Point de contrôle</p>
-            <h2 id="run-title">Valider un lot avant ingestion</h2>
+            <p class="section-label">Lots fournis</p>
+            <h2 id="run-title">Exécuter les contrôles</h2>
           </div>
-          <p class="workbench-note">Aucune donnée personnelle n'est saisie ici. Le lot de démonstration choisi est évalué contre le contrat actif.</p>
+          <p class="workbench-note">Aucun upload et aucune donnée personnelle. Le lot choisi est un CSV synthétique inclus dans le dépôt.</p>
         </div>
 
         <div class="run-card">
@@ -70,7 +71,7 @@
             <small id="batchHelp">Jeux de données de démonstration inclus dans le projet.</small>
           </div>
           <button id="validate" type="button">
-            <span>Contrôler le lot</span>
+            <span>Lancer les contrôles</span>
             <i aria-hidden="true">↗</i>
           </button>
         </div>
@@ -81,14 +82,14 @@
         <div class="decision-card" id="decisionCard">
           <div class="decision-heading">
             <div>
-              <p class="section-label">Décision d'ingestion</p>
-              <h2 id="decision-title">Décision calculée</h2>
+              <p class="section-label">Résultat du contrôle</p>
+              <h2 id="decision-title">Décision sur le lot</h2>
             </div>
             <span id="decisionState" class="decision-state">En attente</span>
           </div>
           <div class="decision-body">
             <strong id="decision">En attente</strong>
-            <p id="decisionExplanation">Le verdict et ses critères apparaîtront ici.</p>
+            <p id="decisionExplanation">Choisissez un lot pour voir les règles déclenchées et l’action prévue.</p>
           </div>
           <dl class="decision-facts" id="decisionFacts"></dl>
         </div>
@@ -98,7 +99,7 @@
             <div class="panel-heading">
               <div>
                 <p class="section-label">Contrôles exécutés</p>
-                <h2 id="checks-title">Pourquoi cette décision</h2>
+                <h2 id="checks-title">Règles déclenchées</h2>
               </div>
               <span id="checksSummary" class="panel-summary"></span>
             </div>
@@ -108,12 +109,12 @@
           <section class="detail-panel impact-panel" aria-labelledby="impact-title">
             <div class="panel-heading">
               <div>
-                <p class="section-label">Lineage</p>
-                <h2 id="impact-title">Impact aval</h2>
+                <p class="section-label">Conséquences déclarées</p>
+                <h2 id="impact-title">Ce qui doit attendre</h2>
               </div>
-              <span class="panel-summary">Actifs dépendants</span>
+              <span class="panel-summary">Dépendances du contrat</span>
             </div>
-            <p class="impact-intro">La décision est traduite en conséquence opérationnelle pour chaque actif consommateur.</p>
+            <p class="impact-intro">Cette liste vient du contrat. Elle ne prétend pas découvrir automatiquement toutes les dépendances de la plateforme.</p>
             <div id="impact" class="impact-list" aria-live="polite"></div>
           </section>
         </div>
@@ -121,9 +122,9 @@
         <section class="receipt" aria-labelledby="receipt-title">
           <div class="receipt-mark" aria-hidden="true">✓</div>
           <div>
-            <p class="section-label">Reçu d'audit</p>
-            <h2 id="receipt-title">Validation prête à être tracée</h2>
-            <p id="receiptText">Le résultat sera ajouté au journal d'audit local une fois le contrôle terminé.</p>
+            <p class="section-label">Trace locale</p>
+            <h2 id="receipt-title">Reçu de cette exécution</h2>
+            <p id="receiptText">Le résultat sera enregistré dans le journal local une fois le contrôle terminé.</p>
           </div>
           <span id="receiptId" class="receipt-id">En attente</span>
         </section>
@@ -132,13 +133,13 @@
       <section class="audit" aria-labelledby="audit-title">
         <div class="section-heading audit-heading">
           <div>
-            <p class="section-label">Journal d'audit</p>
-            <h2 id="audit-title">Décisions récentes</h2>
+            <p class="section-label">Journal local</p>
+            <h2 id="audit-title">Exécutions récentes</h2>
           </div>
           <button id="refreshAudit" class="refresh-button" type="button">Actualiser</button>
         </div>
         <div class="audit-table-labels" aria-hidden="true">
-          <span>Date</span><span>Lot</span><span>Décision</span><span>Score</span>
+          <span>Date</span><span>Lot</span><span>Décision</span><span>Écarts</span>
         </div>
         <div id="history" class="audit-list" aria-live="polite">
           <p class="loading-copy">Chargement du journal...</p>
@@ -146,8 +147,8 @@
       </section>
 
       <footer>
-        <p>Schema · Quality · Impact · Audit</p>
-        <p>Un prototype de contrôle explicite pour les équipes data.</p>
+        <p>Contrat JSON · CSV synthétiques · Reçu SQLite local</p>
+        <p>Jeu de démonstration. Aucune écriture ni alerte externe.</p>
         <a href="https://github.com/Ikel0">Ikel Ouedraogo</a>
       </footer>
     </main>

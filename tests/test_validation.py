@@ -15,7 +15,7 @@ class ValidationTests(unittest.TestCase):
     def test_clean_batch_is_accepted(self):
         result = validate_batch(ROOT / "data" / "orders_clean.csv", CONTRACT)
         self.assertEqual(result["decision"], "accept")
-        self.assertEqual(result["score"], 100)
+        self.assertNotIn("score", result)
         self.assertEqual(result["controls"][0]["state"], "passed")
         self.assertEqual(len(result["batch_fingerprint"]), 64)
 
@@ -28,7 +28,7 @@ class ValidationTests(unittest.TestCase):
 
     def test_schema_drift_is_visible_and_impact_is_blocked(self):
         result = validate_batch(ROOT / "data" / "orders_schema_drift.csv", CONTRACT)
-        self.assertEqual(result["decision"], "accept_with_warnings")
+        self.assertEqual(result["decision"], "review")
         self.assertIn("schema.unexpected_fields", {issue["check"] for issue in result["issues"]})
         impact = impact_for(CONTRACT, result["decision"])
         self.assertEqual(impact[0]["action"], "review")
