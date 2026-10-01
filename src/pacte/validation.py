@@ -1,21 +1,36 @@
+"""Deterministic checks run before a CSV batch is admitted downstream."""
 from __future__ import annotations
 
 import csv
+import hashlib
+import math
 from collections import Counter
 from datetime import date
 from pathlib import Path
+from typing import Any
 
 
-def _issue(check: str, severity: str, message: str, affected: int = 0) -> dict:
+def _issue(check: str, severity: str, message: str, affected: int = 0) -> dict[str, Any]:
     return {"check": check, "severity": severity, "message": message, "affected": affected}
 
 
-def _valid(value: str, field: dict) -> bool:
+def batch_fingerprint(path: Path) -> str:
+    """Fingerprint raw bytes so an audit receipt identifies an exact input."""
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(65536), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def _valid(value: str, field: dict[str, Any]) -> bool:
     if value == "":
         return not field.get("required", False)
     try:
         if field["type"] == "number":
             number = float(value)
+            if not math.isfinite(number):
+                return False
             if "min" in field and number < field["min"]:
                 return False
         elif field["type"] == "date":
@@ -27,22 +42,56 @@ def _valid(value: str, field: dict) -> bool:
     return True
 
 
-def validate_batch(path: Path, contract: dict) -> dict:
-    with path.open(encoding="utf-8", newline="") as stream:
-        reader = csv.DictReader(stream)
-        headers = reader.fieldnames or []
-        rows = list(reader)
+def _control(identifier: str, label: str, issues: list[dict[str, Any]]) -> dict[str, Any]:
+    """Return a UI and API friendly control result without hiding individual issues."""
+    scoped = [issue for issue in issues if issue["check"] == identifier or issue["check"].startswith(f"{identifier}.")]
+    if any(issue["severity"] == "critical" for issue in scoped):
+        state = "failed"
+    elif scoped:
+        state = "review"
+    else:
+        state = "passed"
+    return {"id": identifier, "label": label, "state": state, "issues": len(scoped)}
+
+
+def validate_batch(path: Path, contract: dict[str, Any]) -> dict[str, Any]:
+    """Validate one file and produce a reproducible admission decision.
+
+    The decision is deliberately conservative: a missing required field, invalid
+    required value, duplicate business key, malformed header or empty batch
+    never reaches downstream consumers automatically.
+    """
+    issues: list[dict[str, Any]] = []
+    try:
+        with path.open(encoding="utf-8-sig", newline="") as stream:
+            reader = csv.DictReader(stream)
+            headers = reader.fieldnames or []
+            rows = list(reader)
+    except csv.Error as error:
+        headers = []
+        rows = []
+        issues.append(_issue("schema.csv_parse", "critical", f"Lecture du CSV impossible : {error}"))
 
     fields = contract["fields"]
     expected = {field["name"] for field in fields}
-    received = set(headers)
-    issues: list[dict] = []
+    received = {header for header in headers if header}
+    duplicated_headers = sorted({header for header, count in Counter(headers).items() if header and count > 1})
+    extra_cells = sum(len(row.get(None) or []) for row in rows)
+    if not headers:
+        issues.append(_issue("schema.header", "critical", "Le lot ne contient pas d'en-tête lisible"))
+    if duplicated_headers:
+        issues.append(_issue("schema.duplicate_headers", "critical", f"En-têtes dupliqués : {', '.join(duplicated_headers)}"))
+    if extra_cells:
+        issues.append(_issue("schema.extra_values", "critical", f"{extra_cells} valeur(s) ne correspondent à aucun en-tête", extra_cells))
+    if not rows:
+        issues.append(_issue("volume.empty_batch", "critical", "Le lot ne contient aucune ligne de données"))
+
     missing = expected - received
     unexpected = received - expected
     if missing:
-        issues.append(_issue("schema.missing_fields", "critical", f"Missing fields: {', '.join(sorted(missing))}"))
+        issues.append(_issue("schema.missing_fields", "critical", f"Champs absents : {', '.join(sorted(missing))}"))
     if unexpected:
-        issues.append(_issue("schema.unexpected_fields", "warning", f"Unexpected fields: {', '.join(sorted(unexpected))}"))
+        issues.append(_issue("schema.unexpected_fields", "warning", f"Champs non prévus : {', '.join(sorted(unexpected))}"))
 
     for field in fields:
         name = field["name"]
@@ -51,22 +100,39 @@ def validate_batch(path: Path, contract: dict) -> dict:
         invalid = [row for row in rows if not _valid((row.get(name) or "").strip(), field)]
         if invalid:
             severity = "critical" if field.get("required") or field["type"] != "string" else "warning"
-            issues.append(_issue(f"field.{name}", severity, f"{len(invalid)} invalid value(s) in {name}", len(invalid)))
+            issues.append(_issue(f"field.{name}", severity, f"{len(invalid)} valeur(s) invalide(s) pour {name}", len(invalid)))
         if field.get("unique"):
-            values = [row.get(name) for row in rows if row.get(name)]
+            values = [(row.get(name) or "").strip() for row in rows if (row.get(name) or "").strip()]
             duplicates = sum(count - 1 for count in Counter(values).values() if count > 1)
             if duplicates:
-                issues.append(_issue(f"uniqueness.{name}", "critical", f"{duplicates} duplicate value(s) in {name}", duplicates))
+                issues.append(_issue(f"uniqueness.{name}", "critical", f"{duplicates} identifiant(s) en double pour {name}", duplicates))
 
     critical = [item for item in issues if item["severity"] == "critical"]
-    decision = "quarantine" if critical else "accept_with_warnings" if issues else "accept"
-    score = max(0, 100 - 25 * len(critical) - 8 * len([item for item in issues if item["severity"] == "warning"]))
+    warnings = [item for item in issues if item["severity"] == "warning"]
+    decision = "quarantine" if critical else "accept_with_warnings" if warnings else "accept"
+    score = max(0, 100 - 25 * len(critical) - 8 * len(warnings))
+    controls = [
+        _control("schema", "Schéma", issues),
+        _control("field", "Validité des champs", issues),
+        _control("uniqueness", "Clés métier", issues),
+        _control("volume", "Volume du lot", issues),
+    ]
     return {
         "batch": path.name,
+        "batch_fingerprint": batch_fingerprint(path),
         "contract": contract["name"],
         "contract_version": contract["version"],
+        "contract_fingerprint": contract["fingerprint"],
+        "contract_owner": contract["owner"],
         "rows": len(rows),
+        "headers": headers,
         "decision": decision,
         "score": score,
         "issues": issues,
+        "controls": controls,
+        "summary": {
+            "critical": len(critical),
+            "warnings": len(warnings),
+            "checks": len(controls),
+        },
     }

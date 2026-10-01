@@ -2,7 +2,7 @@
   "name": "customer_orders",
   "version": "1.2.0",
   "owner": "billing-analytics",
-  "description": "Daily order extract used for finance and customer reporting.",
+  "description": "Extraction quotidienne des commandes utilisée pour la clôture finance et le reporting client.",
   "freshness_hours": 24,
   "fields": [
     {"name": "order_id", "type": "string", "required": true, "unique": true},
@@ -12,8 +12,8 @@
     {"name": "status", "type": "string", "required": true, "allowed": ["paid", "refunded", "pending"]}
   ],
   "downstream": [
-    {"asset": "mart_daily_revenue", "tier": "critical", "reason": "Finance daily close"},
-    {"asset": "mart_customer_ltv", "tier": "high", "reason": "Retention reporting"},
-    {"asset": "sales_ops_dashboard", "tier": "medium", "reason": "Operational monitoring"}
+    {"asset": "mart_daily_revenue", "tier": "critical", "reason": "Clôture quotidienne finance"},
+    {"asset": "mart_customer_ltv", "tier": "high", "reason": "Reporting fidélisation"},
+    {"asset": "sales_ops_dashboard", "tier": "medium", "reason": "Suivi opérationnel"}
   ]
 }
