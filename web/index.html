@@ -9,6 +9,9 @@
     />
     <title>Pacte | Contrôle de lot avant ingestion</title>
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
@@ -18,14 +21,13 @@
         <div class="brand-line">
           <a class="brand" href="/" aria-label="Pacte, accueil">
             <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
-            <span>PACTE</span>
+            <span>Pacte</span>
           </a>
-          <p class="mode"><span aria-hidden="true"></span> Démonstration locale</p>
+          <p class="mode">Démonstration locale</p>
         </div>
 
         <div class="masthead-grid">
           <div class="masthead-copy">
-            <p class="eyebrow">Contrat de données</p>
             <h1>Vérifier un lot avant ingestion</h1>
             <p class="lede">
               Trois exports de commandes permettent de voir ce qui est accepté, ce qui doit être revu et ce qui doit rester de côté.
@@ -44,7 +46,6 @@
       <section class="contract-brief" aria-labelledby="contract-brief-title">
         <div class="section-heading">
           <div>
-            <p class="section-label">Règles du contrat</p>
             <h2 id="contract-brief-title">Ce que l’export doit respecter</h2>
           </div>
           <p id="contractVersion" class="version-chip">Version en chargement</p>
@@ -58,7 +59,6 @@
       <section class="workbench" id="workbench" aria-labelledby="run-title">
         <div class="section-heading workbench-heading">
           <div>
-            <p class="section-label">Lots fournis</p>
             <h2 id="run-title">Exécuter les contrôles</h2>
           </div>
           <p class="workbench-note">Aucun upload et aucune donnée personnelle. Le lot choisi est un CSV synthétique inclus dans le dépôt.</p>
@@ -72,7 +72,6 @@
           </div>
           <button id="validate" type="button">
             <span>Lancer les contrôles</span>
-            <i aria-hidden="true">↗</i>
           </button>
         </div>
         <p class="request-status" id="requestStatus" role="status" aria-live="polite"></p>
@@ -82,7 +81,6 @@
         <div class="decision-card" id="decisionCard">
           <div class="decision-heading">
             <div>
-              <p class="section-label">Résultat du contrôle</p>
               <h2 id="decision-title">Décision sur le lot</h2>
             </div>
             <span id="decisionState" class="decision-state">En attente</span>
@@ -98,7 +96,6 @@
           <section class="detail-panel" aria-labelledby="checks-title">
             <div class="panel-heading">
               <div>
-                <p class="section-label">Contrôles exécutés</p>
                 <h2 id="checks-title">Règles déclenchées</h2>
               </div>
               <span id="checksSummary" class="panel-summary"></span>
@@ -109,7 +106,6 @@
           <section class="detail-panel impact-panel" aria-labelledby="impact-title">
             <div class="panel-heading">
               <div>
-                <p class="section-label">Conséquences déclarées</p>
                 <h2 id="impact-title">Ce qui doit attendre</h2>
               </div>
               <span class="panel-summary">Dépendances du contrat</span>
@@ -120,9 +116,7 @@
         </div>
 
         <section class="receipt" aria-labelledby="receipt-title">
-          <div class="receipt-mark" aria-hidden="true">✓</div>
           <div>
-            <p class="section-label">Trace locale</p>
             <h2 id="receipt-title">Reçu de cette exécution</h2>
             <p id="receiptText">Le résultat sera enregistré dans le journal local une fois le contrôle terminé.</p>
           </div>
