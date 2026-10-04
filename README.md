@@ -8,7 +8,7 @@ Démo en ligne : https://pacte-ikel.onrender.com (instance gratuite Render, le p
 
 ![Résultat du contrôle de l’export aux valeurs invalides](docs/demo.png)
 
-La capture montre l’export aux valeurs invalides : le lot est refusé, deux contrôles sur quatre échouent et deux des trois consommateurs déclarés sont bloqués.
+La capture montre le haut de la page après le contrôle de l’export aux valeurs invalides : le lot est refusé, deux contrôles sur quatre seulement sont validés et cinq écarts sont bloquants.
 
 ## Les scénarios fournis
 
