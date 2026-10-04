@@ -10,6 +10,11 @@ from pathlib import Path
 from typing import Any
 
 
+def count(n: int, singular: str, plural: str) -> str:
+    """French agreement: 0 and 1 take the singular."""
+    return f"{n} {singular if n < 2 else plural}"
+
+
 def _issue(check: str, severity: str, message: str, affected: int = 0) -> dict[str, Any]:
     return {"check": check, "severity": severity, "message": message, "affected": affected}
 
@@ -82,7 +87,7 @@ def validate_batch(path: Path, contract: dict[str, Any]) -> dict[str, Any]:
     if duplicated_headers:
         issues.append(_issue("schema.duplicate_headers", "critical", f"En-têtes dupliqués : {', '.join(duplicated_headers)}"))
     if extra_cells:
-        issues.append(_issue("schema.extra_values", "critical", f"{extra_cells} valeur(s) ne correspondent à aucun en-tête", extra_cells))
+        issues.append(_issue("schema.extra_values", "critical", count(extra_cells, "valeur ne correspond", "valeurs ne correspondent") + " à aucun en-tête", extra_cells))
     if not rows:
         issues.append(_issue("volume.empty_batch", "critical", "Le lot ne contient aucune ligne de données"))
 
@@ -100,12 +105,12 @@ def validate_batch(path: Path, contract: dict[str, Any]) -> dict[str, Any]:
         invalid = [row for row in rows if not _valid((row.get(name) or "").strip(), field)]
         if invalid:
             severity = "critical" if field.get("required") or field["type"] != "string" else "warning"
-            issues.append(_issue(f"field.{name}", severity, f"{len(invalid)} valeur(s) invalide(s) pour {name}", len(invalid)))
+            issues.append(_issue(f"field.{name}", severity, f"{count(len(invalid), 'valeur invalide', 'valeurs invalides')} pour {name}", len(invalid)))
         if field.get("unique"):
             values = [(row.get(name) or "").strip() for row in rows if (row.get(name) or "").strip()]
             duplicates = sum(count - 1 for count in Counter(values).values() if count > 1)
             if duplicates:
-                issues.append(_issue(f"uniqueness.{name}", "critical", f"{duplicates} identifiant(s) en double pour {name}", duplicates))
+                issues.append(_issue(f"uniqueness.{name}", "critical", f"{count(duplicates, 'identifiant', 'identifiants')} en double pour {name}", duplicates))
 
     critical = [item for item in issues if item["severity"] == "critical"]
     warnings = [item for item in issues if item["severity"] == "warning"]

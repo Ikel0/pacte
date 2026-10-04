@@ -47,6 +47,11 @@
     return labels[key] || key.replaceAll("_", " ");
   }
 
+  function count(n, singular, plural) {
+    const value = Number(n) || 0;
+    return `${value} ${value < 2 ? singular : plural}`;
+  }
+
   function clear(node) {
     node.replaceChildren();
   }
@@ -174,7 +179,7 @@
     append(
       copy,
       element("strong", { text: issue.message || "Contrôle signalé" }),
-      element("p", { text: issue.affected ? `${issue.affected} valeur(s) concernée(s).` : "Le contrôle exige une revue." }),
+      element("p", { text: issue.affected ? `${count(issue.affected, "valeur concernée", "valeurs concernées")}.` : "Le contrôle exige une revue." }),
       element("small", { text: issue.check || "contrôle du contrat" })
     );
     return append(row, state, copy);
@@ -189,7 +194,7 @@
     const detail = related.length
       ? related.map((issue) => issue.message).join(" · ")
       : control.issues
-        ? `${control.issues} écart(s) détecté(s).`
+        ? `${count(control.issues, "écart détecté", "écarts détectés")}.`
         : "Aucun écart détecté pour ce contrôle.";
     append(
       copy,
@@ -229,7 +234,7 @@
 
   function explanationFor(decision, issueCount) {
     if (decision === "quarantine") return "Le lot est écarté : au moins une règle bloquante du contrat n’est pas satisfaite.";
-    if (decision === "review") return `Le lot attend une revue : ${issueCount} écart(s) doit ou doivent être compris avant toute publication.`;
+    if (decision === "review") return `Le lot attend une revue : ${count(issueCount, "écart doit être compris", "écarts doivent être compris")} avant toute publication.`;
     return "Le lot respecte les règles déclarées par le contrat. La démo autoriserait la publication.";
   }
 
@@ -252,11 +257,11 @@
     elements.decisionFacts.append(
       fact("Contrôles", controls.length ? `${passedControls}/${controls.length}` : "?"),
       fact("Lignes contrôlées", data.rows ?? "?"),
-      fact("Écarts", `${summary.critical || 0} bloquant(s), ${summary.warnings || 0} à revoir`),
+      fact("Écarts", `${count(summary.critical, "bloquant", "bloquants")}, ${summary.warnings || 0} à revoir`),
       fact("Responsable", data.contract_owner || "non attribué")
     );
 
-    elements.checksSummary.textContent = controls.length ? `${passedControls}/${controls.length} validés` : issues.length ? `${issues.length} écart(s)` : "Aucun écart";
+    elements.checksSummary.textContent = controls.length ? `${passedControls}/${controls.length} validés` : issues.length ? count(issues.length, "écart", "écarts") : "Aucun écart";
     clear(elements.issues);
     if (controls.length) {
       for (const control of controls) elements.issues.append(createControlRow(control, issues));
@@ -277,7 +282,7 @@
     const receiptLabel = receipt?.run_id || receipt?.id ? `Reçu ${receipt.run_id || `#${receipt.id}`}` : "Audit local";
     elements.receiptId.textContent = receiptLabel;
     elements.receiptText.textContent = receipt
-      ? `Lot ${batchLabel(data.batch)} contrôlé le ${receipt.recorded_at || receipt.created_at}. Décision : ${words(decision).toLowerCase()}. ${criticalCount} contrôle(s) bloquant(s), ${summary.affected_values || 0} valeur(s) signalée(s).${receipt.payload_hash ? ` Empreinte ${receipt.payload_hash.slice(0, 12)}.` : ""}`
+      ? `Lot ${batchLabel(data.batch)} contrôlé le ${receipt.recorded_at || receipt.created_at}. Décision : ${words(decision).toLowerCase()}. ${count(criticalCount, "contrôle bloquant", "contrôles bloquants")}, ${count(summary.affected_values, "valeur signalée", "valeurs signalées")}.${receipt.payload_hash ? ` Empreinte ${receipt.payload_hash.slice(0, 12)}.` : ""}`
       : `Lot ${data.batch} contrôlé. Le journal d'audit local est actualisé après chaque décision.`;
     elements.result.hidden = false;
     elements.result.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -290,7 +295,7 @@
     const decision = String(run.decision || "");
     const status = element("span", { className: `audit-decision is-${decision.replaceAll("_", "-")}`, text: words(decision) });
     const summary = run.summary && typeof run.summary === "object" ? run.summary : {};
-    const issues = element("span", { text: summary.critical || summary.warnings ? `${summary.critical || 0} bloquant(s), ${summary.warnings || 0} à revoir` : "aucun écart" });
+    const issues = element("span", { text: summary.critical || summary.warnings ? `${count(summary.critical, "bloquant", "bloquants")}, ${summary.warnings || 0} à revoir` : "aucun écart" });
     return append(row, time, batch, status, issues);
   }
 

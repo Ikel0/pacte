@@ -5,7 +5,7 @@ from pathlib import Path
 from pacte.audit import AuditLog
 from pacte.contracts import load_contract
 from pacte.lineage import gate_for, impact_for
-from pacte.validation import batch_fingerprint, validate_batch
+from pacte.validation import batch_fingerprint, count, validate_batch
 
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACT = load_contract(ROOT / "contracts" / "orders.json")
@@ -25,6 +25,15 @@ class ValidationTests(unittest.TestCase):
         checks = {issue["check"] for issue in result["issues"]}
         self.assertIn("uniqueness.order_id", checks)
         self.assertIn("field.order_date", checks)
+
+    def test_issue_messages_agree_in_number(self):
+        result = validate_batch(ROOT / "data" / "orders_quality_issues.csv", CONTRACT)
+        messages = {issue["check"]: issue["message"] for issue in result["issues"]}
+        self.assertEqual(messages["field.order_date"], "1 valeur invalide pour order_date")
+        self.assertEqual(messages["uniqueness.order_id"], "1 identifiant en double pour order_id")
+        self.assertNotIn("(s)", " ".join(messages.values()))
+        self.assertEqual(count(2, "valeur invalide", "valeurs invalides"), "2 valeurs invalides")
+        self.assertEqual(count(0, "écart", "écarts"), "0 écart")
 
     def test_schema_drift_is_visible_and_impact_is_blocked(self):
         result = validate_batch(ROOT / "data" / "orders_schema_drift.csv", CONTRACT)
