@@ -1,16 +1,18 @@
 # Pacte
 
-Pacte est une démo locale de contrôle de lots CSV avant ingestion. Elle part d’un cas précis : un export quotidien de commandes peut changer sans prévenir, alors que des tableaux et traitements attendent encore l’ancien format.
+Pacte est une démo de contrôle de lots CSV avant ingestion. Elle part d’un cas précis : un export quotidien de commandes peut changer sans prévenir, alors que des tableaux et traitements attendent encore l’ancien format.
 
-Le projet ne cherche pas à simuler une plateforme de gouvernance entière. Il montre une décision simple et reproductible sur un fichier donné : admettre, demander une revue ou écarter le lot.
+Le périmètre est volontairement petit. Pour un fichier et un contrat versionné, Pacte calcule une décision reproductible (admettre, demander une revue ou écarter le lot) et l’enregistre dans un reçu local.
+
+Démo en ligne : https://pacte-ikel.onrender.com (instance gratuite Render, le premier chargement peut prendre une minute).
+
+![Résultat du contrôle de l’export aux valeurs invalides](docs/demo.png)
+
+La capture montre l’export aux valeurs invalides : le lot est refusé, deux contrôles sur quatre échouent et deux des trois consommateurs déclarés sont bloqués.
 
 ## Les scénarios fournis
 
-- **Export commandes : conforme** : le fichier respecte les règles déclarées.
-- **Export commandes : valeurs et clés invalides** : une date et une clé métier posent problème, le lot est écarté.
-- **Export commandes : colonne inattendue** : l’évolution est visible, mais aucune publication automatique n’est autorisée avant revue.
-
-Chaque scénario utilise des données synthétiques incluses dans le dépôt.
+Trois exports de commandes synthétiques sont inclus dans `data/`. Le fichier conforme passe. Celui qui contient une date invalide, un montant négatif, un client manquant, un statut inconnu et une clé en double est écarté. Celui qui ajoute une colonne `currency` attend une revue avant toute publication.
 
 ## Ce qui est réellement contrôlé
 
