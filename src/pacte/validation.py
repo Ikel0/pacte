@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import csv
 import hashlib
+import io
 import math
 from collections import Counter
 from datetime import date
@@ -122,12 +123,19 @@ def validate_batch(path: Path, contract: dict[str, Any]) -> dict[str, Any]:
     required value, duplicate business key, malformed header or empty batch
     never reaches downstream consumers automatically.
     """
+    text = path.read_bytes().decode("utf-8-sig")
+    return validate_text(text, contract, path.name, batch_fingerprint(path))
+
+
+def validate_text(text: str, contract: dict[str, Any], batch_name: str, fingerprint: str | None = None) -> dict[str, Any]:
+    """Same checks on CSV text already in memory (a file of the repo or a visitor's edited copy)."""
+    if fingerprint is None:
+        fingerprint = hashlib.sha256(text.encode("utf-8")).hexdigest()
     issues: list[dict[str, Any]] = []
     try:
-        with path.open(encoding="utf-8-sig", newline="") as stream:
-            reader = csv.DictReader(stream)
-            headers = reader.fieldnames or []
-            rows = list(reader)
+        reader = csv.DictReader(io.StringIO(text, newline=""))
+        headers = reader.fieldnames or []
+        rows = list(reader)
     except csv.Error as error:
         headers = []
         rows = []
@@ -178,8 +186,8 @@ def validate_batch(path: Path, contract: dict[str, Any]) -> dict[str, Any]:
         _control("volume", "Volume du lot", issues),
     ]
     return {
-        "batch": path.name,
-        "batch_fingerprint": batch_fingerprint(path),
+        "batch": batch_name,
+        "batch_fingerprint": fingerprint,
         "contract": contract["name"],
         "contract_version": contract["version"],
         "contract_fingerprint": contract["fingerprint"],

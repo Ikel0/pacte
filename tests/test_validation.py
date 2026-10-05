@@ -15,6 +15,7 @@ class ValidationTests(unittest.TestCase):
     def test_clean_batch_is_accepted(self):
         result = validate_batch(ROOT / "data" / "orders_clean.csv", CONTRACT)
         self.assertEqual(result["decision"], "accept")
+        self.assertEqual(result["batch"], "orders_clean.csv")
         self.assertNotIn("score", result)
         self.assertEqual(result["controls"][0]["state"], "passed")
         self.assertEqual(len(result["batch_fingerprint"]), 64)

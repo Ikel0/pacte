@@ -3,6 +3,9 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import threading
+import time
+from collections import deque
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -11,7 +14,7 @@ from typing import Any
 from .audit import AuditLog
 from .contracts import load_contract
 from .lineage import gate_for, impact_for
-from .validation import validate_batch
+from .validation import validate_batch, validate_text
 
 ROOT = Path(__file__).resolve().parents[2]
 DATA = ROOT / "data"
@@ -37,9 +40,64 @@ def validate(batch: str) -> dict[str, Any]:
     return result
 
 
+TRIAL_MAX_BYTES = 64 * 1024
+TRIAL_MAX_ROWS = 200
+
+
+def trial(text: object) -> dict[str, Any]:
+    """Check a visitor's edited copy with the real rules, in memory only.
+
+    Nothing is written: no receipt, no file. The decision is computed exactly as
+    for a repository batch, so the page cannot show a verdict the engine would not give.
+    """
+    if not isinstance(text, str):
+        raise ValueError("Le champ csv doit contenir le texte du lot.")
+    if len(text.encode("utf-8")) > TRIAL_MAX_BYTES:
+        raise ValueError("Le lot d’essai dépasse 64 Ko.")
+    result = validate_text(text, CONTRACT, "essai.csv")
+    if result["rows"] > TRIAL_MAX_ROWS:
+        raise ValueError(f"Le lot d’essai dépasse {TRIAL_MAX_ROWS} lignes.")
+    result["trial"] = True
+    result["gate"] = gate_for(result["decision"])
+    result["impact"] = impact_for(CONTRACT, result["decision"])
+    return result
+
+
+class RateLimit:
+    """Sliding window per client: a public demo must not become a free CSV validator."""
+
+    def __init__(self, limit: int, window_seconds: float = 60.0) -> None:
+        self.limit = limit
+        self.window = window_seconds
+        self._hits: dict[str, deque[float]] = {}
+        self._lock = threading.Lock()
+
+    def allow(self, client: str, now: float | None = None) -> bool:
+        now = time.monotonic() if now is None else now
+        with self._lock:
+            hits = self._hits.setdefault(client, deque())
+            while hits and now - hits[0] >= self.window:
+                hits.popleft()
+            if len(hits) >= self.limit:
+                return False
+            hits.append(now)
+            if len(self._hits) > 10_000:  # never let the table itself grow without bound
+                self._hits = {key: value for key, value in self._hits.items() if value and now - value[-1] < self.window}
+            return True
+
+
+# Une frappe déclenche au plus un essai toutes les 350 ms : 90 par minute laisse corriger sans gêne.
+TRIAL_LIMIT = RateLimit(90)
+
+
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(ROOT / "web"), **kwargs)
+
+    def client_ip(self) -> str:
+        # Derrière le proxy de Render, l'adresse du visiteur arrive en tête de X-Forwarded-For.
+        forwarded = self.headers.get("X-Forwarded-For", "")
+        return forwarded.split(",")[0].strip() or self.client_address[0]
 
     def send_json(self, payload: object, status: HTTPStatus = HTTPStatus.OK) -> None:
         encoded = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -83,17 +141,24 @@ class Handler(SimpleHTTPRequestHandler):
         super().do_GET()
 
     def do_POST(self) -> None:
-        if self.path != "/api/validate":
+        if self.path not in {"/api/validate", "/api/trial"}:
             self.send_json({"error": "Unknown route"}, HTTPStatus.NOT_FOUND)
             return
         try:
             content_length = int(self.headers.get("Content-Length", "0"))
-            if content_length < 0 or content_length > 100_000:
+            # JSON escaping can roughly double a 64 Ko CSV, hence the margin.
+            if content_length < 0 or content_length > 200_000:
                 raise ValueError("Le corps de la requête est invalide")
             body = json.loads(self.rfile.read(content_length) or b"{}")
             if not isinstance(body, dict):
                 raise ValueError("Le JSON doit être un objet")
-            self.send_json(validate(str(body.get("batch", ""))))
+            if self.path == "/api/trial":
+                if not TRIAL_LIMIT.allow(self.client_ip()):
+                    self.send_json({"error": "trop d’essais en une minute, réessayez dans un instant"}, HTTPStatus.TOO_MANY_REQUESTS)
+                    return
+                self.send_json(trial(body.get("csv")))
+            else:
+                self.send_json(validate(str(body.get("batch", ""))))
         except (json.JSONDecodeError, ValueError, OSError) as error:
             self.send_json({"error": str(error)}, HTTPStatus.BAD_REQUEST)
 
