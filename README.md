@@ -8,7 +8,7 @@ Démo en ligne : https://pacte-ikel.onrender.com (instance gratuite Render, le p
 
 ![Résultat du contrôle de l’export aux valeurs invalides](docs/demo.png)
 
-La capture montre le haut de la page après le contrôle de l’export aux valeurs invalides : le lot est refusé, deux contrôles sur quatre seulement sont validés et cinq écarts sont bloquants.
+La capture montre le procès-verbal après le contrôle de l’export aux valeurs invalides : la décision (lot refusé, en quarantaine) et son motif d’abord, puis les lignes du fichier avec, en marge de chaque ligne fautive, l’écart relevé.
 
 ## Les scénarios fournis
 
@@ -43,7 +43,7 @@ cd pacte
 PYTHONPATH=src python3 -m pacte.server
 ```
 
-Ouvrir ensuite `http://localhost:8090`, choisir un des trois exports, puis lire les règles déclenchées, les conséquences déclarées et le reçu local.
+Ouvrir ensuite `http://localhost:8090`, choisir un des trois exports et lancer les contrôles. La page affiche le procès-verbal (décision, lignes en écart, contrôles, suite pour les consommateurs, reçu), puis le contrat lui-même. `http://localhost:8090/?lot=orders_schema_drift.csv` lance directement le contrôle d’un lot.
 
 ## Vérifier le projet
 
