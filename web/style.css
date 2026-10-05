@@ -152,7 +152,7 @@ table.lines { width: 100%; }
 .lines td.is-faulty.is-warning { text-decoration: underline; text-underline-offset: 0.2em; }
 .lines th.is-unexpected { color: var(--ink); text-decoration: underline; text-underline-offset: 0.2em; }
 .lines .margin {
-  width: 34%;
+  width: 40%;
   min-width: 16rem;
   padding-left: 14px;
   padding-right: 0;
@@ -167,6 +167,65 @@ table.lines { width: 100%; }
 
 table.record th { width: 13rem; padding-right: 20px; color: var(--muted); }
 table.record td { overflow-wrap: anywhere; }
+
+/* Correction du lot */
+
+.lines td { padding-top: 2px; padding-bottom: 2px; }
+.lines input.cell {
+  min-width: 4ch;
+  max-width: 100%;
+  margin: 0 0 0 -4px;
+  padding: 4px 4px;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+.lines input.cell:hover { border-color: var(--rule); }
+.lines input.cell:focus { border-color: var(--ink); outline: none; background: #fff; }
+.lines input.cell:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+.lines td.is-faulty.is-critical input { color: var(--refus); font-weight: 700; }
+.lines input.cell::placeholder { color: var(--muted); opacity: 1; }
+.lines td.is-faulty.is-critical input::placeholder { color: var(--refus); }
+.lines td.is-empty input.cell { border-bottom-color: var(--rule); }
+.lines td.is-edited input.cell { border-bottom: 1px solid var(--ink); }
+.lines .margin { padding-top: 6px; }
+.lines tbody th { padding-top: 6px; }
+.line-number { display: block; }
+
+.inline-action {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-family: var(--ui);
+  font-size: 0.75rem;
+  font-weight: 400;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+.inline-action:hover { background: none; color: var(--ink); }
+th .inline-action { display: block; margin-top: 2px; }
+
+.edit-tools { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px 10px; margin-top: 12px; font-family: var(--ui); font-size: 0.9375rem; }
+.paste summary { display: inline-flex; align-items: center; min-height: 34px; padding: 0 4px; cursor: pointer; text-decoration: underline; text-underline-offset: 0.2em; }
+.paste[open] { flex-basis: 100%; }
+.paste form { display: grid; gap: 6px; max-width: 40rem; margin-top: 6px; }
+.paste label { color: var(--muted); font-size: 0.875rem; }
+.paste textarea { width: 100%; padding: 8px; border: 1px solid #8a9096; border-radius: 3px; font-family: var(--code); font-size: 0.875rem; }
+.paste button { justify-self: start; }
+
+.trial-status { margin: 8px 0 0; font-family: var(--ui); font-size: 0.875rem; }
+.trial-status:empty { display: none; }
+.trial-status.is-error { color: var(--refus); font-weight: 600; }
+
+.scenario { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: 10px 0 0; padding: 8px 0 0; border-top: 1px solid var(--rule); font-family: var(--ui); font-size: 0.9375rem; font-weight: 600; }
+.scenario[hidden] { display: none; }
+
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* Journal */
 
@@ -192,13 +251,19 @@ table.record td { overflow-wrap: anywhere; }
   .lines tbody tr { display: flex; flex-wrap: wrap; gap: 2px 14px; padding: 10px 0; }
   .lines tbody th, .lines td { padding: 0; }
   .lines tbody th.num { width: 100%; padding: 0; color: var(--ink); font-weight: 700; text-align: left; }
-  .lines tbody th::before { content: attr(data-label) " "; }
+  .lines tbody th::before { content: attr(data-label); margin-right: 0.3em; }
+  .lines tbody th.num { display: flex; align-items: center; }
+  .lines tbody th .line-number { display: inline; }
+  .lines tbody th .inline-action { margin: 0 0 0 auto; }
   .lines td[data-field]::before { content: attr(data-field) " "; color: var(--muted); font-family: var(--ui); font-size: 0.75rem; font-weight: 400; }
   .lines td.margin { width: 100%; min-width: 0; margin-top: 6px; padding-left: 10px; }
   .lines td.margin:empty { display: none; }
   .run { grid-template-columns: 1fr; }
   .run-help { align-self: start; }
   .run button { justify-self: start; }
+  button, .run select, .paste summary { min-height: 44px; }
+  .inline-action { min-height: 44px; min-width: 44px; padding: 0 4px; text-align: left; }
+  .lines input.cell { min-height: 44px; }
   .decision-line { font-size: 1.3125rem; }
   table.record th { width: auto; }
   table.record tr { display: block; padding: 6px 0; }

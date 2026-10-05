@@ -35,6 +35,10 @@
       <article id="result" class="doc pv" hidden aria-labelledby="pv-title" tabindex="-1">
         <h2 id="pv-title" class="doc-title">Procès-verbal de contrôle</h2>
         <p class="doc-meta" id="pvMeta"></p>
+        <p class="scenario" id="scenario" hidden>
+          <span>Scénario modifié par vous. Essai calculé en mémoire, non enregistré.</span>
+          <button type="button" class="secondary" id="backToReference">Revenir au lot de référence</button>
+        </p>
 
         <div class="decision" id="decisionBlock">
           <p class="decision-line" id="decision"></p>
@@ -47,6 +51,20 @@
           <div class="table-scroll" tabindex="0" role="region" aria-labelledby="lines-title">
             <table class="lines" id="linesTable"></table>
           </div>
+          <div class="edit-tools" id="editTools">
+            <button type="button" class="secondary" id="addRow">Ajouter une ligne</button>
+            <button type="button" class="secondary" id="reset" disabled>Réinitialiser</button>
+            <details class="paste" id="paste">
+              <summary>Coller un CSV</summary>
+              <form id="pasteForm">
+                <label for="pasteArea">CSV avec ligne d’en-tête, 200 lignes et 64 Ko au plus</label>
+                <textarea id="pasteArea" rows="7" spellcheck="false"></textarea>
+                <button type="submit">Contrôler ce CSV</button>
+              </form>
+            </details>
+          </div>
+          <p class="trial-status" id="trialStatus"></p>
+          <p class="visually-hidden" id="announce" aria-live="polite"></p>
         </section>
 
         <section class="doc-section" aria-labelledby="checks-title">
@@ -120,6 +138,7 @@
         <span>Reçus conservés dans un SQLite local, sans écriture ni alerte externe.</span>
       </footer>
     </div>
+    <script src="csv.js" defer></script>
     <script src="app.js" defer></script>
   </body>
 </html>

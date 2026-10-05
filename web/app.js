@@ -26,7 +26,19 @@
     requestStatus: $("requestStatus"),
     result: $("result"),
     validate: $("validate"),
+    addRow: $("addRow"),
+    backToReference: $("backToReference"),
+    announce: $("announce"),
+    editTools: $("editTools"),
+    paste: $("paste"),
+    pasteArea: $("pasteArea"),
+    pasteForm: $("pasteForm"),
+    reset: $("reset"),
+    scenario: $("scenario"),
+    trialStatus: $("trialStatus"),
   };
+
+  const DEFAULT_BATCH = "orders_quality_issues.csv";
 
   const decisionWords = {
     accept: "accepté",
@@ -226,91 +238,140 @@
     return `Les ${controls} contrôles sont passés sur ${count(data.rows, "ligne", "lignes")}. Le lot peut être publié vers les consommateurs déclarés.`;
   }
 
-  function renderLines(data) {
-    const headers = Array.isArray(data.headers) ? data.headers : [];
-    const lines = Array.isArray(data.lines) ? data.lines : [];
-    const expected = new Set((contract?.fields || []).map((f) => f.name));
-    const unexpected = headers.filter((h) => h && contract && !expected.has(h));
+  /* Lot de travail : copie modifiable du lot contrôlé.
+     Elle ne vit que dans cette page ; chaque calcul renvoie la copie entière au serveur. */
 
+  const work = {
+    reference: null, // réponse du contrôle du fichier d'origine
+    referenceAudit: null,
+    headers: [],
+    rows: [],
+    originalRows: [],
+    modified: false,
+    sequence: 0,
+    timer: 0,
+    lastDecision: "",
+  };
+
+  function loadWork(data) {
+    work.headers = Array.isArray(data.headers) ? [...data.headers] : [];
+    work.rows = (Array.isArray(data.lines) ? data.lines : []).map((line) => [...(line.values || [])]);
+  }
+
+  function isEdited(rowIndex, colIndex) {
+    const original = work.originalRows[rowIndex];
+    return !original || original[colIndex] !== work.rows[rowIndex][colIndex];
+  }
+
+  function cellInput(rowIndex, colIndex) {
+    const value = work.rows[rowIndex][colIndex] ?? "";
+    const header = work.headers[colIndex] || "";
+    const input = el("input", null, "cell", {
+      type: "text",
+      spellcheck: "false",
+      autocomplete: "off",
+      "aria-label": `Ligne ${rowIndex + 2}, ${header}`,
+      size: Math.max(4, value.length + 1),
+      placeholder: "vide",
+    });
+    input.value = value; // propriété value : la saisie reste du texte, jamais du HTML
+    input.dataset.row = rowIndex;
+    input.dataset.col = colIndex;
+    return input;
+  }
+
+  function buildLinesTable() {
+    const expected = new Set((contract?.fields || []).map((f) => f.name));
     const thead = el("thead");
     const head = el("tr");
     head.append(el("th", "Ligne", "num", { scope: "col" }));
-    for (const h of headers) head.append(el("th", h, unexpected.includes(h) ? "is-unexpected" : null, { scope: "col" }));
+    work.headers.forEach((h, colIndex) => {
+      const th = el("th", null, contract && !expected.has(h) ? "is-unexpected" : null, { scope: "col" });
+      th.append(el("span", h));
+      if (contract && !expected.has(h)) {
+        th.append(el("button", "retirer", "inline-action", { type: "button", "data-remove-col": colIndex, "aria-label": `Retirer la colonne ${h}` }));
+      }
+      head.append(th);
+    });
     const marginHead = el("th", null, "margin", { scope: "col" });
-    marginHead.append(el("span", "Écart"));
-    if (unexpected.length) {
-      marginHead.append(el("span", `${listWords(unexpected)} absent du contrat`, "margin-note"));
-    }
+    marginHead.append(el("span", "Écart"), el("span", "", "margin-note", { id: "headerNote" }));
     head.append(marginHead);
     thead.append(head);
 
     const tbody = el("tbody");
-    for (const line of lines) {
-      const findings = Array.isArray(line.findings) ? line.findings : [];
-      const faulty = new Map(findings.map((f) => [f.field, f.severity]));
-      const tr = el("tr", null, findings.length ? "has-findings" : null);
-      tr.append(el("th", line.line, "num", { scope: "row", "data-label": "Ligne" }));
-      (line.values || []).forEach((value, index) => {
-        const severity = faulty.get(headers[index]);
-        const td = el("td", value === "" ? "vide" : value, severity ? `is-faulty is-${severity}` : value === "" ? "is-empty" : null, { "data-field": headers[index] || "" });
+    work.rows.forEach((values, rowIndex) => {
+      const tr = el("tr");
+      const lineCell = el("th", null, "num", { scope: "row", "data-label": "Ligne" });
+      lineCell.append(el("span", rowIndex + 2, "line-number"));
+      lineCell.append(el("button", "retirer", "inline-action", { type: "button", "data-remove-row": rowIndex, "aria-label": `Retirer la ligne ${rowIndex + 2}` }));
+      tr.append(lineCell);
+      work.headers.forEach((h, colIndex) => {
+        const td = el("td", null, null, { "data-field": h });
+        td.append(cellInput(rowIndex, colIndex));
         tr.append(td);
       });
-      const margin = el("td", null, "margin");
-      for (const f of findings) margin.append(el("span", f.message, `finding is-${f.severity}`));
-      tr.append(margin);
+      tr.append(el("td", null, "margin"));
       tbody.append(tr);
-    }
-    if (!lines.length) {
+    });
+    if (!work.rows.length) {
       const tr = el("tr");
-      tr.append(el("td", "Le lot ne contient aucune ligne de données.", null, { colspan: headers.length + 2 }));
+      tr.append(el("td", "Le lot ne contient aucune ligne de données.", null, { colspan: work.headers.length + 2 }));
       tbody.append(tr);
     }
     elements.linesTable.replaceChildren(thead, tbody);
-
-    const withFindings = lines.filter((l) => (l.findings || []).length).length;
-    const shown = lines.length < (data.rows || 0) ? ` Seules les ${lines.length} premières sont affichées.` : "";
-    elements.linesNote.textContent = `${count(data.rows, "ligne contrôlée", "lignes contrôlées")}, ${withFindings ? count(withFindings, "porte un écart", "portent des écarts") : "aucune ne porte d’écart"}.${shown} La numérotation suit le fichier, en-tête en ligne 1.`;
   }
 
-  function renderPv(data, auditEntry) {
-    const decision = String(data.decision || "");
-    const issues = Array.isArray(data.issues) ? data.issues : [];
+  // Applique au tableau existant les écarts calculés par le serveur, sans le reconstruire (le focus reste en place).
+  function applyFindings(data) {
+    const lines = Array.isArray(data.lines) ? data.lines : [];
+    const body = elements.linesTable.tBodies[0];
+    if (!body) return;
+    lines.forEach((line, rowIndex) => {
+      const tr = body.rows[rowIndex];
+      if (!tr) return;
+      const findings = Array.isArray(line.findings) ? line.findings : [];
+      const faulty = new Map(findings.map((f) => [f.field, f.severity]));
+      tr.querySelectorAll("input.cell").forEach((input) => {
+        const col = Number(input.dataset.col);
+        const severity = faulty.get(work.headers[col]);
+        input.parentElement.className = [severity ? `is-faulty is-${severity}` : "", input.value === "" ? "is-empty" : "", isEdited(rowIndex, col) ? "is-edited" : ""].filter(Boolean).join(" ");
+        input.setAttribute("aria-invalid", severity ? "true" : "false");
+      });
+      const margin = tr.cells[tr.cells.length - 1];
+      margin.replaceChildren(...findings.map((f) => el("span", f.message, `finding is-${f.severity}`)));
+    });
+    const unexpected = work.headers.filter((h) => contract && !new Set(contract.fields.map((f) => f.name)).has(h));
+    const note = document.getElementById("headerNote");
+    if (note) note.textContent = unexpected.length ? `${listWords(unexpected)} absent du contrat` : "";
+
+    const withFindings = lines.filter((l) => (l.findings || []).length).length;
+    elements.linesNote.textContent = `${count(data.rows, "ligne contrôlée", "lignes contrôlées")}, ${withFindings ? count(withFindings, "porte un écart", "portent des écarts") : "aucune ne porte d’écart"}. Corrigez une valeur : le contrôle se relance, rien n’est conservé.`;
+  }
+
+  function renderReceipt(data, receipt) {
     const controls = Array.isArray(data.controls) ? data.controls : [];
-    const impact = Array.isArray(data.impact) ? data.impact : [];
     const summary = data.summary && typeof data.summary === "object" ? data.summary : {};
-    const receipt = data.audit && typeof data.audit === "object" ? data.audit : auditEntry || {};
     const passed = controls.filter((c) => c.state === "passed").length;
-
-    elements.pvMeta.textContent = `Lot ${data.batch}, contrôlé contre ${data.contract} v${data.contract_version}.`;
-
-    elements.decisionBlock.className = `decision is-${decision.replaceAll("_", "-")}`;
-    elements.decision.replaceChildren(document.createTextNode("Décision : "), el("strong", `lot ${decisionWord(decision)}.`));
-    elements.decisionReason.textContent = decisionReason(data, issues);
-
-    renderLines(data);
-
-    elements.checksBody.replaceChildren(
-      ...controls.map((c) => {
-        const result = el("td", controlWords[c.state] || c.state, `state is-${c.state}`);
-        return row([c.label || c.id, result, el("td", c.issues || 0, "num")]);
-      })
-    );
-
-    elements.impactBody.replaceChildren(
-      ...impact.map((a) => row([codeCell(a.asset), tierWords[a.tier] || a.tier, el("td", actionWords[a.action] || a.action, `state is-${a.action}`)]))
-    );
-
-    const record = [
-      ["Date", receipt.recorded_at ? `${receipt.recorded_at} UTC` : "non enregistrée"],
-      ["Lot", `${data.batch}, ${count(data.rows, "ligne", "lignes")}`],
-      ["Empreinte du lot", el("code", data.batch_fingerprint || "?", "hash")],
+    const decision = String(data.decision || "");
+    const record = data.trial
+      ? [
+          ["Date", "essai non enregistré"],
+          ["Lot", `copie modifiée de ${work.reference?.batch || "?"}, ${count(data.rows, "ligne", "lignes")}`],
+          ["Empreinte du lot", el("code", data.batch_fingerprint || "?", "hash")],
+        ]
+      : [
+          ["Date", receipt?.recorded_at ? `${receipt.recorded_at} UTC` : "non enregistrée"],
+          ["Lot", `${data.batch}, ${count(data.rows, "ligne", "lignes")}`],
+          ["Empreinte du lot", el("code", data.batch_fingerprint || "?", "hash")],
+        ];
+    record.push(
       ["Contrat", `${data.contract} v${data.contract_version}, responsable ${data.contract_owner || "non attribué"}`],
       ["Empreinte du contrat", el("code", data.contract_fingerprint || "?", "hash")],
       ["Contrôles passés", `${passed} sur ${controls.length}`],
       ["Écarts", `${count(summary.critical, "écart bloquant", "écarts bloquants")}, ${count(summary.warnings, "à revoir", "à revoir")}, ${count(summary.affected_values, "valeur signalée", "valeurs signalées")}`],
       ["Décision", `lot ${decisionWord(decision)}`],
-      ["Référence", el("code", receipt.run_id || data.run_id || "?")],
-    ];
+      ["Référence", data.trial ? "aucune, l’essai n’entre pas au journal" : el("code", receipt?.run_id || data.run_id || "?")]
+    );
     elements.receiptBody.replaceChildren(
       ...record.map(([label, value]) => {
         const tr = el("tr");
@@ -320,17 +381,167 @@
         return tr;
       })
     );
-    elements.receiptNote.textContent = receipt.replayed
-      ? "Ce fichier avait déjà été contrôlé avec ce contrat : le reçu existant est repris tel quel, sans nouvelle entrée au journal."
-      : "Reçu enregistré dans le journal local. Rejouer le même fichier avec le même contrat retrouvera ce reçu.";
+    elements.receiptNote.textContent = data.trial
+      ? "Essai calculé en mémoire avec les règles du contrat. Ni le contenu du lot ni ce reçu ne sont conservés, et aucun autre visiteur ne les voit."
+      : receipt?.replayed
+        ? "Ce fichier avait déjà été contrôlé avec ce contrat : le reçu existant est repris tel quel, sans nouvelle entrée au journal."
+        : "Reçu enregistré dans le journal local. Rejouer le même fichier avec le même contrat retrouvera ce reçu.";
+  }
 
+  function renderVerdict(data, receipt) {
+    const decision = String(data.decision || "");
+    const issues = Array.isArray(data.issues) ? data.issues : [];
+    const controls = Array.isArray(data.controls) ? data.controls : [];
+    const impact = Array.isArray(data.impact) ? data.impact : [];
+
+    elements.pvMeta.textContent = data.trial
+      ? `Copie de ${work.reference?.batch || "?"} modifiée par vous, contrôlée contre ${data.contract} v${data.contract_version}.`
+      : `Lot ${data.batch}, contrôlé contre ${data.contract} v${data.contract_version}.`;
+    elements.scenario.hidden = !data.trial;
+
+    elements.decisionBlock.className = `decision is-${decision.replaceAll("_", "-")}`;
+    elements.decision.replaceChildren(document.createTextNode("Décision : "), el("strong", `lot ${decisionWord(decision)}.`));
+    elements.decisionReason.textContent = decisionReason(data, issues);
+
+    elements.checksBody.replaceChildren(
+      ...controls.map((c) => row([c.label || c.id, el("td", controlWords[c.state] || c.state, `state is-${c.state}`), el("td", c.issues || 0, "num")]))
+    );
+    elements.impactBody.replaceChildren(
+      ...impact.map((a) => row([codeCell(a.asset), tierWords[a.tier] || a.tier, el("td", actionWords[a.action] || a.action, `state is-${a.action}`)]))
+    );
+    applyFindings(data);
+    renderReceipt(data, receipt);
+
+    // Annonce aux lecteurs d'écran seulement quand la décision change, pas à chaque frappe.
+    if (work.lastDecision && work.lastDecision !== decision) {
+      elements.announce.textContent = `Décision mise à jour : lot ${decisionWord(decision)}.`;
+    }
+    work.lastDecision = decision;
+  }
+
+  function renderReference(data, receipt) {
+    work.reference = data;
+    work.referenceAudit = receipt;
+    loadWork(data);
+    work.originalRows = work.rows.map((r) => [...r]);
+    work.modified = false;
+    work.lastDecision = "";
+    elements.trialStatus.textContent = "";
+    elements.reset.disabled = true;
+    const tooLong = (data.rows || 0) > work.rows.length;
+    elements.editTools.hidden = tooLong;
+    buildLinesTable();
+    elements.linesTable.querySelectorAll("input, button").forEach((n) => (n.disabled = tooLong));
+    renderVerdict(data, receipt);
     elements.result.hidden = false;
-    const top = elements.result.getBoundingClientRect().top;
-    if (top > window.innerHeight * 0.6) {
-      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      elements.result.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+  }
+
+  /* Essais : chaque modification relance le vrai contrôle côté serveur, en mémoire. */
+
+  function scheduleTrial(delay = 350) {
+    window.clearTimeout(work.timer);
+    work.timer = window.setTimeout(runTrial, delay);
+  }
+
+  async function runTrial(csvText) {
+    const sequence = ++work.sequence;
+    const text = typeof csvText === "string" ? csvText : window.PacteCsv.toCsv(work.headers, work.rows);
+    try {
+      const data = await request("/api/trial", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ csv: text }),
+      });
+      if (sequence !== work.sequence) return; // une saisie plus récente est déjà partie
+      work.modified = true;
+      elements.reset.disabled = false;
+      if (typeof csvText === "string") {
+        loadWork(data);
+        buildLinesTable();
+      }
+      renderVerdict(data);
+      elements.trialStatus.textContent = "";
+      elements.trialStatus.classList.remove("is-error");
+    } catch (error) {
+      if (sequence !== work.sequence) return;
+      const message = `Essai non contrôlé : ${error.message}. La décision affichée est celle du dernier essai valide.`;
+      elements.trialStatus.textContent = message;
+      elements.trialStatus.classList.add("is-error");
+      elements.announce.textContent = message;
     }
   }
+
+  function structureChanged(focusSelector) {
+    buildLinesTable();
+    if (focusSelector) elements.linesTable.querySelector(focusSelector)?.focus();
+    scheduleTrial(0);
+  }
+
+  function resetWork() {
+    window.clearTimeout(work.timer);
+    work.sequence += 1;
+    if (work.reference) renderReference(work.reference, work.referenceAudit);
+    elements.announce.textContent = "Lot de référence rétabli.";
+    elements.pasteArea.value = "";
+    elements.paste.open = false;
+  }
+
+  elements.linesTable.addEventListener("input", (event) => {
+    const input = event.target;
+    if (!input.matches("input.cell")) return;
+    work.rows[Number(input.dataset.row)][Number(input.dataset.col)] = input.value;
+    input.size = Math.max(4, input.value.length + 1);
+    scheduleTrial();
+  });
+
+  elements.linesTable.addEventListener("click", (event) => {
+    const button = event.target.closest("button");
+    if (!button) return;
+    if (button.dataset.removeRow !== undefined) {
+      const index = Number(button.dataset.removeRow);
+      work.rows.splice(index, 1);
+      work.originalRows.splice(index, 1);
+      const next = Math.min(index, work.rows.length - 1);
+      structureChanged(next >= 0 ? `[data-remove-row="${next}"]` : null);
+      if (next < 0) elements.addRow.focus();
+    } else if (button.dataset.removeCol !== undefined) {
+      const col = Number(button.dataset.removeCol);
+      work.headers.splice(col, 1);
+      work.rows.forEach((r) => r.splice(col, 1));
+      work.originalRows.forEach((r) => r.splice(col, 1));
+      structureChanged();
+      elements.linesTable.querySelector("input.cell")?.focus();
+    }
+  });
+
+  elements.addRow.addEventListener("click", () => {
+    if (work.rows.length >= 200) {
+      elements.trialStatus.textContent = "Le lot d’essai est limité à 200 lignes.";
+      return;
+    }
+    work.rows.push(work.headers.map(() => ""));
+    structureChanged(`input[data-row="${work.rows.length - 1}"][data-col="0"]`);
+  });
+
+  elements.reset.addEventListener("click", resetWork);
+  elements.backToReference.addEventListener("click", resetWork);
+
+  elements.pasteForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const text = elements.pasteArea.value;
+    if (!text.trim()) {
+      elements.trialStatus.textContent = "Collez d’abord un CSV avec sa ligne d’en-tête.";
+      return;
+    }
+    work.originalRows = [];
+    runTrial(text.endsWith("\n") ? text : `${text}\n`);
+  });
+
+  elements.paste.addEventListener("toggle", () => {
+    if (elements.paste.open && !elements.pasteArea.value) {
+      elements.pasteArea.value = window.PacteCsv.toCsv(work.headers, work.rows);
+    }
+  });
 
   /* Journal */
 
@@ -376,7 +587,7 @@
       });
       const audit = await request("/api/audit").catch(() => null);
       if (audit) renderHistory(audit);
-      renderPv(data, audit?.find((entry) => entry.run_id === data.run_id));
+      renderReference(data, data.audit || audit?.find((entry) => entry.run_id === data.run_id));
       setStatus("");
     } catch (error) {
       setStatus(`Le contrôle n’a pas abouti : ${error.message}.`, true);
@@ -387,18 +598,25 @@
   }
 
   async function load() {
+    // Sur l'offre gratuite de Render, le service s'endort : le premier appel peut attendre son réveil.
+    const wake = window.setTimeout(() => setStatus("Le service démarre, comptez environ 40 secondes."), 2500);
     try {
       const data = await request("/api/overview");
+      window.clearTimeout(wake);
+      setStatus("");
       renderContract(data.contract || {});
       renderBatches(data.batches);
       renderHistory(data.recent);
-      // ?lot=fichier.csv relance directement le contrôle : lien partageable vers un procès-verbal.
+      // La page s'ouvre sur un procès-verbal complet : le lot refusé, ou celui demandé par ?lot=.
+      const batches = data.batches || [];
       const wanted = new URLSearchParams(window.location.search).get("lot");
-      if (wanted && (data.batches || []).includes(wanted)) {
-        elements.batch.value = wanted;
+      const initial = batches.includes(wanted) ? wanted : batches.includes(DEFAULT_BATCH) ? DEFAULT_BATCH : batches[0];
+      if (initial) {
+        elements.batch.value = initial;
         await validateBatch();
       }
     } catch (error) {
+      window.clearTimeout(wake);
       setStatus(`Le contrat n’a pas pu être lu : ${error.message}. Vérifiez que le service Pacte est lancé.`, true);
       elements.contractTitle.textContent = "Contrat indisponible";
       elements.contractMeta.textContent = "";
