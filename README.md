@@ -8,11 +8,19 @@ Démo en ligne : https://pacte-ikel.onrender.com (instance gratuite Render, le p
 
 ![Résultat du contrôle de l’export aux valeurs invalides](docs/demo.png)
 
-La capture montre le procès-verbal après le contrôle de l’export aux valeurs invalides : la décision (lot refusé, en quarantaine) et son motif d’abord, puis les lignes du fichier avec, en marge de chaque ligne fautive, l’écart relevé.
+La capture montre l’état d’ouverture de la page : le procès-verbal du lot aux valeurs invalides, avec la décision (lot refusé, en quarantaine) et son motif d’abord, puis les lignes du fichier et, en marge de chaque ligne fautive, l’écart relevé.
 
 ## Les scénarios fournis
 
 Trois exports de commandes synthétiques sont inclus dans `data/`. Le fichier conforme passe. Celui qui contient une date invalide, un montant négatif, un client manquant, un statut inconnu et une clé en double est écarté. Celui qui ajoute une colonne `currency` attend une revue avant toute publication.
+
+## Corriger le lot dans la page
+
+Les valeurs du tableau « Lignes contrôlées » se modifient sur place. On peut aussi ajouter ou retirer une ligne, retirer une colonne absente du contrat ou coller un petit CSV. À chaque modification, la page renvoie la copie entière à `POST /api/trial`, qui applique exactement les mêmes contrôles que pour un fichier du dépôt ; la décision, le motif et la colonne des écarts se mettent à jour. La page indique alors « Scénario modifié par vous », et « Revenir au lot de référence » (ou « Réinitialiser ») rétablit le fichier d’origine.
+
+Les règles restent celles du contrat : corriger seulement la date et le montant de la ligne 3 laisse le lot refusé, car ord-1001 reste en double et la ligne 4 garde un client manquant et un statut inconnu. Le lot passe à « accepté » une fois les cinq écarts corrigés, ou les deux lignes retirées.
+
+L’essai est calculé en mémoire : rien n’est écrit, ni le contenu ni un reçu, et un visiteur ne voit jamais la copie d’un autre puisque chaque appel transporte son propre lot. Un essai est limité à 200 lignes et 64 Ko, et à 90 appels par minute et par adresse IP. Les valeurs saisies sont réaffichées comme du texte (jamais comme du HTML), et une formule comme `=1+1` reste une chaîne invalide pour un montant.
 
 ## Ce qui est réellement contrôlé
 
@@ -43,15 +51,16 @@ cd pacte
 PYTHONPATH=src python3 -m pacte.server
 ```
 
-Ouvrir ensuite `http://localhost:8090`, choisir un des trois exports et lancer les contrôles. La page affiche le procès-verbal (décision, lignes en écart, contrôles, suite pour les consommateurs, reçu), puis le contrat lui-même. `http://localhost:8090/?lot=orders_schema_drift.csv` lance directement le contrôle d’un lot.
+Ouvrir ensuite `http://localhost:8090` : la page s’ouvre sur le procès-verbal du lot refusé. On peut choisir un autre export et relancer les contrôles. La page affiche le procès-verbal (décision, lignes en écart, contrôles, suite pour les consommateurs, reçu), puis le contrat lui-même. `http://localhost:8090/?lot=orders_schema_drift.csv` lance directement le contrôle d’un lot.
 
 ## Vérifier le projet
 
 ```bash
 PYTHONPATH=src python3 -m unittest discover -s tests -v
+node --test tests/*.test.js
 ```
 
-La suite couvre le lot conforme, la dérive de schéma, les erreurs de qualité, un lot vide, un contrat invalide et l’idempotence du reçu.
+La suite Python couvre le lot conforme, la dérive de schéma, les erreurs de qualité, un lot vide, un contrat invalide, l’idempotence du reçu et l’endpoint d’essai (chaque correction proposée par la page, isolation entre visiteurs, absence d’écriture, limites de taille et de débit, valeurs contenant du HTML ou une formule). Le test Node vérifie la reconstruction du CSV dans la page et l’absence d’injection de HTML.
 
 ## API de démonstration
 
@@ -59,7 +68,8 @@ La suite couvre le lot conforme, la dérive de schéma, les erreurs de qualité,
 - `GET /api/overview` retourne le contrat, les lots fournis et les derniers reçus locaux.
 - `GET /api/audit` retourne l’historique compact des exécutions.
 - `GET /api/runs/{run_id}` retrouve une exécution précise.
-- `POST /api/validate` avec `{ "batch": "orders_clean.csv" }` lance les contrôles sur un lot inclus dans `data/`.
+- `POST /api/validate` avec `{ "batch": "orders_clean.csv" }` lance les contrôles sur un lot inclus dans `data/` et enregistre un reçu.
+- `POST /api/trial` avec `{ "csv": "order_id,…\n…" }` contrôle un CSV envoyé, en mémoire et sans reçu (200 lignes, 64 Ko, 90 appels par minute et par IP).
 
 ## Limites assumées
 
