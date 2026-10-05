@@ -10,7 +10,9 @@
     contractFields: $("contractFields"),
     contractMeta: $("contractMeta"),
     contractRules: $("contractRules"),
-    contractTitle: $("contract-title"),
+    contractTitle: $("contractName"),
+    headContract: $("headContract"),
+    toc: $("toc"),
     decision: $("decision"),
     decisionBlock: $("decisionBlock"),
     decisionReason: $("decisionReason"),
@@ -145,7 +147,9 @@
   function renderContract(data) {
     contract = data;
     const fields = Array.isArray(data.fields) ? data.fields : [];
-    elements.contractTitle.textContent = `Contrat ${data.name || "sans nom"}, version ${data.version || "?"}`;
+    const title = `Contrat ${data.name || "sans nom"}, version ${data.version || "?"}`;
+    elements.contractTitle.textContent = title;
+    elements.headContract.textContent = `${title}, responsable ${data.owner || "non attribué"}.`;
     elements.contractMeta.replaceChildren(
       document.createTextNode(`Responsable ${data.owner || "non attribué"}. Empreinte SHA-256 `),
       el("code", data.fingerprint || "non calculée", "hash"),
@@ -395,8 +399,8 @@
     const impact = Array.isArray(data.impact) ? data.impact : [];
 
     elements.pvMeta.textContent = data.trial
-      ? `Copie de ${work.reference?.batch || "?"} modifiée par vous, contrôlée contre ${data.contract} v${data.contract_version}.`
-      : `Lot ${data.batch}, contrôlé contre ${data.contract} v${data.contract_version}.`;
+      ? `copie modifiée de ${work.reference?.batch || "?"}, contre ${data.contract} ${data.contract_version}`
+      : `${data.batch}, contre ${data.contract} ${data.contract_version}`;
     elements.scenario.hidden = !data.trial;
 
     elements.decisionBlock.className = `decision is-${decision.replaceAll("_", "-")}`;
@@ -619,10 +623,14 @@
       window.clearTimeout(wake);
       setStatus(`Le contrat n’a pas pu être lu : ${error.message}. Vérifiez que le service Pacte est lancé.`, true);
       elements.contractTitle.textContent = "Contrat indisponible";
+      elements.headContract.textContent = "Contrat indisponible.";
       elements.contractMeta.textContent = "";
       elements.validate.disabled = true;
     }
   }
+
+  // Le sommaire reste ouvert en colonne sur grand écran ; replié sur petit écran pour laisser le contrôle en tête.
+  if (window.matchMedia("(max-width: 1099px)").matches) elements.toc.open = false;
 
   elements.validate.addEventListener("click", validateBatch);
   elements.refreshAudit.addEventListener("click", refreshAudit);

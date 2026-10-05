@@ -14,123 +14,164 @@
   <body>
     <a class="skip-link" href="#controle">Aller au contrôle du lot</a>
     <div class="page">
-      <nav class="back" aria-label="Retour">
-        <a href="https://ikel0.github.io/">← Portfolio</a>
-      </nav>
-
       <header class="head">
-        <h1>Pacte <span>contrôle un lot CSV contre son contrat de données avant de l’ingérer, puis rend une décision motivée.</span></h1>
+        <p class="back"><a href="https://ikel0.github.io/">← Portfolio</a></p>
+        <h1>Pacte : contrôler un lot CSV contre son contrat de données avant de l’ingérer</h1>
+        <p class="head-contract" id="headContract">Contrat en cours de lecture</p>
       </header>
 
-      <section class="run" id="controle" aria-label="Lancer un contrôle">
-        <div class="run-field">
-          <label for="batch">Lot à contrôler</label>
-          <select id="batch" aria-describedby="batchHelp"></select>
-        </div>
-        <button id="validate" type="button">Lancer les contrôles</button>
-        <p id="batchHelp" class="run-help">Trois exports de commandes synthétiques, inclus dans le dépôt. Rien n’est envoyé ni écrit ailleurs.</p>
-        <p class="run-status" id="requestStatus" role="status" aria-live="polite"></p>
-      </section>
+      <details class="toc" id="toc" open>
+        <summary>Sommaire</summary>
+        <ol>
+          <li><a href="#controle"><span class="secno">1.</span> Contrôle d’un lot</a></li>
+          <li>
+            <a href="#contrat"><span class="secno">2.</span> Contrat</a>
+            <ol>
+              <li><a href="#definitions"><span class="secno">2.1</span> Définitions</a></li>
+              <li><a href="#champs"><span class="secno">2.2</span> Champs</a></li>
+              <li><a href="#regles"><span class="secno">2.3</span> Règles</a></li>
+              <li><a href="#fraicheur"><span class="secno">2.4</span> Fraîcheur</a></li>
+              <li><a href="#consommateurs"><span class="secno">2.5</span> Consommateurs déclarés</a></li>
+            </ol>
+          </li>
+          <li><a href="#journal"><span class="secno">3.</span> Journal des contrôles</a></li>
+        </ol>
+      </details>
 
-      <article id="result" class="doc pv" hidden aria-labelledby="pv-title" tabindex="-1">
-        <h2 id="pv-title" class="doc-title">Procès-verbal de contrôle</h2>
-        <p class="doc-meta" id="pvMeta"></p>
-        <p class="scenario" id="scenario" hidden>
-          <span>Scénario modifié par vous. Essai calculé en mémoire, non enregistré.</span>
-          <button type="button" class="secondary" id="backToReference">Revenir au lot de référence</button>
-        </p>
+      <main class="body">
+        <section id="controle" aria-labelledby="controle-title">
+          <h2 id="controle-title"><span class="secno">1.</span> Contrôle d’un lot</h2>
 
-        <div class="decision" id="decisionBlock">
-          <p class="decision-line" id="decision"></p>
-          <p class="decision-reason" id="decisionReason"></p>
-        </div>
-
-        <section class="doc-section" aria-labelledby="lines-title">
-          <h3 id="lines-title">Lignes contrôlées</h3>
-          <p class="section-note" id="linesNote"></p>
-          <div class="table-scroll" tabindex="0" role="region" aria-labelledby="lines-title">
-            <table class="lines" id="linesTable"></table>
+          <div class="run">
+            <label for="batch">Lot à contrôler</label>
+            <div class="run-row">
+              <select id="batch" aria-describedby="batchHelp"></select>
+              <button id="validate" type="button">Lancer les contrôles</button>
+            </div>
+            <p id="batchHelp" class="run-help">Trois exports de commandes synthétiques inclus dans le dépôt. Rien n’est envoyé ni écrit ailleurs.</p>
+            <p class="run-status" id="requestStatus" role="status" aria-live="polite"></p>
           </div>
-          <div class="edit-tools" id="editTools">
-            <button type="button" class="secondary" id="addRow">Ajouter une ligne</button>
-            <button type="button" class="secondary" id="reset" disabled>Réinitialiser</button>
-            <details class="paste" id="paste">
-              <summary>Coller un CSV</summary>
-              <form id="pasteForm">
-                <label for="pasteArea">CSV avec ligne d’en-tête, 200 lignes et 64 Ko au plus</label>
-                <textarea id="pasteArea" rows="7" spellcheck="false"></textarea>
-                <button type="submit">Contrôler ce CSV</button>
-              </form>
-            </details>
-          </div>
-          <p class="trial-status" id="trialStatus"></p>
-          <p class="visually-hidden" id="announce" aria-live="polite"></p>
+
+          <article id="result" class="example pv" hidden aria-labelledby="pv-title" tabindex="-1">
+            <div class="example-head">
+              <h3 id="pv-title">Procès-verbal 1</h3>
+              <span id="pvMeta"></span>
+            </div>
+            <div class="example-body">
+              <p class="scenario" id="scenario" hidden>
+                <span>Scénario modifié par vous. Essai calculé en mémoire, non enregistré.</span>
+                <button type="button" id="backToReference">Revenir au lot de référence</button>
+              </p>
+
+              <div class="decision" id="decisionBlock">
+                <p class="decision-line" id="decision"></p>
+                <p class="decision-reason" id="decisionReason"></p>
+              </div>
+
+              <section class="pv-part" aria-labelledby="lines-title">
+                <h4 id="lines-title">Lignes contrôlées</h4>
+                <p class="note-line" id="linesNote"></p>
+                <div class="table-scroll" tabindex="0" role="region" aria-labelledby="lines-title">
+                  <table class="lines" id="linesTable"></table>
+                </div>
+                <div class="edit-tools" id="editTools">
+                  <button type="button" id="addRow">Ajouter une ligne</button>
+                  <button type="button" id="reset" disabled>Réinitialiser</button>
+                  <details class="paste" id="paste">
+                    <summary>Coller un CSV</summary>
+                    <form id="pasteForm">
+                      <label for="pasteArea">CSV avec ligne d’en-tête, 200 lignes et 64 Ko au plus</label>
+                      <textarea id="pasteArea" rows="7" spellcheck="false"></textarea>
+                      <button type="submit">Contrôler ce CSV</button>
+                    </form>
+                  </details>
+                </div>
+                <p class="trial-status" id="trialStatus"></p>
+                <p class="visually-hidden" id="announce" aria-live="polite"></p>
+              </section>
+
+              <section class="pv-part" aria-labelledby="checks-title">
+                <h4 id="checks-title">Contrôles</h4>
+                <table class="grid">
+                  <thead><tr><th scope="col">Contrôle</th><th scope="col">Résultat</th><th scope="col" class="num">Écarts</th></tr></thead>
+                  <tbody id="checksBody"></tbody>
+                </table>
+              </section>
+
+              <section class="pv-part" aria-labelledby="impact-title">
+                <h4 id="impact-title">Suite pour les consommateurs déclarés</h4>
+                <div class="table-scroll" tabindex="0" role="region" aria-labelledby="impact-title">
+                  <table class="grid">
+                    <thead><tr><th scope="col">Consommateur</th><th scope="col">Niveau</th><th scope="col">Suite donnée</th></tr></thead>
+                    <tbody id="impactBody"></tbody>
+                  </table>
+                </div>
+                <p class="note-line">Liste tirée du contrat (section <a href="#consommateurs">2.5</a>), pas d’une découverte automatique des dépendances.</p>
+              </section>
+
+              <section class="pv-part" aria-labelledby="receipt-title">
+                <h4 id="receipt-title">Reçu</h4>
+                <table class="grid record"><tbody id="receiptBody"></tbody></table>
+                <p class="note-line" id="receiptNote"></p>
+              </section>
+            </div>
+          </article>
         </section>
 
-        <section class="doc-section" aria-labelledby="checks-title">
-          <h3 id="checks-title">Contrôles</h3>
-          <table class="plain">
-            <thead><tr><th scope="col">Contrôle</th><th scope="col">Résultat</th><th scope="col" class="num">Écarts</th></tr></thead>
-            <tbody id="checksBody"></tbody>
-          </table>
+        <section id="contrat" aria-labelledby="contract-title">
+          <h2 id="contract-title"><span class="secno">2.</span> <span id="contractName">Contrat</span></h2>
+          <p class="doc-meta" id="contractMeta">Lecture du contrat local.</p>
+          <p id="contractDescription"></p>
+
+          <section id="definitions" aria-labelledby="d-title">
+            <h3 id="d-title"><span class="secno">2.1</span> Définitions</h3>
+            <dl class="definitions">
+              <dt><dfn>Lot</dfn></dt>
+              <dd>Fichier CSV livré en une fois, avec une ligne d’en-tête. Les lignes sont numérotées comme dans le fichier : l’en-tête est la ligne 1.</dd>
+              <dt><dfn>Écart bloquant</dfn></dt>
+              <dd>Règle non respectée qui refuse le lot : champ absent, en-tête dupliqué, valeur sans en-tête, valeur obligatoire invalide, clé en double ou lot vide.</dd>
+              <dt><dfn>Écart à revoir</dfn></dt>
+              <dd>Différence qui n’empêche pas de lire le lot mais demande l’avis du responsable du contrat, par exemple une colonne non prévue.</dd>
+              <dt><dfn>Quarantaine</dfn></dt>
+              <dd>État d’un lot refusé : aucun consommateur déclaré n’en reçoit la version.</dd>
+              <dt><dfn>Empreinte</dfn></dt>
+              <dd>Condensé SHA-256. Celle du contrat désigne la version exacte évaluée, celle du lot le fichier exact contrôlé.</dd>
+            </dl>
+          </section>
+
+          <section id="champs" aria-labelledby="f-title">
+            <h3 id="f-title"><span class="secno">2.2</span> Champs</h3>
+            <div id="contractFields"></div>
+          </section>
+
+          <section id="regles" aria-labelledby="r-title">
+            <h3 id="r-title"><span class="secno">2.3</span> Règles</h3>
+            <ol class="rules" id="contractRules"></ol>
+          </section>
+
+          <section id="fraicheur" aria-labelledby="fr-title">
+            <h3 id="fr-title"><span class="secno">2.4</span> Fraîcheur</h3>
+            <p id="freshnessNote"></p>
+          </section>
+
+          <section id="consommateurs" aria-labelledby="co-title">
+            <h3 id="co-title"><span class="secno">2.5</span> Consommateurs déclarés</h3>
+            <div id="contractConsumers"></div>
+          </section>
         </section>
 
-        <section class="doc-section" aria-labelledby="impact-title">
-          <h3 id="impact-title">Suite pour les consommateurs déclarés</h3>
-          <div class="table-scroll" tabindex="0" role="region" aria-labelledby="impact-title">
-            <table class="plain">
-              <thead><tr><th scope="col">Consommateur</th><th scope="col">Niveau</th><th scope="col">Suite donnée</th></tr></thead>
-              <tbody id="impactBody"></tbody>
+        <section id="journal" aria-labelledby="audit-title">
+          <h2 id="audit-title"><span class="secno">3.</span> Journal des contrôles</h2>
+          <p>Contrôles des fichiers du dépôt enregistrés sur ce serveur. Les essais sur une copie modifiée n’y figurent pas.</p>
+          <p><button id="refreshAudit" type="button">Actualiser</button></p>
+          <div class="table-scroll" tabindex="0" role="region" aria-labelledby="audit-title">
+            <table class="grid">
+              <thead><tr><th scope="col">Date (UTC)</th><th scope="col">Lot</th><th scope="col">Décision</th><th scope="col">Écarts</th></tr></thead>
+              <tbody id="history"><tr><td colspan="4">Lecture du journal local.</td></tr></tbody>
             </table>
           </div>
-          <p class="section-note">Liste tirée du contrat, pas d’une découverte automatique des dépendances.</p>
         </section>
-
-        <section class="doc-section" aria-labelledby="receipt-title">
-          <h3 id="receipt-title">Reçu</h3>
-          <table class="record"><tbody id="receiptBody"></tbody></table>
-          <p class="section-note" id="receiptNote"></p>
-        </section>
-      </article>
-
-      <article class="doc contract" aria-labelledby="contract-title">
-        <h2 id="contract-title" class="doc-title">Contrat en cours de lecture</h2>
-        <p class="doc-meta" id="contractMeta">Lecture du contrat local.</p>
-        <p class="doc-lede" id="contractDescription"></p>
-
-        <section class="doc-section" aria-labelledby="c-fields">
-          <h3 id="c-fields">1. Champs</h3>
-          <div id="contractFields"></div>
-        </section>
-
-        <section class="doc-section" aria-labelledby="c-rules">
-          <h3 id="c-rules">2. Règles</h3>
-          <ol class="rules" id="contractRules"></ol>
-        </section>
-
-        <section class="doc-section" aria-labelledby="c-fresh">
-          <h3 id="c-fresh">3. Fraîcheur</h3>
-          <p id="freshnessNote"></p>
-        </section>
-
-        <section class="doc-section" aria-labelledby="c-consumers">
-          <h3 id="c-consumers">4. Consommateurs déclarés</h3>
-          <div id="contractConsumers"></div>
-        </section>
-      </article>
-
-      <section class="journal" aria-labelledby="audit-title">
-        <div class="journal-head">
-          <h2 id="audit-title">Contrôles déjà enregistrés</h2>
-          <button id="refreshAudit" class="secondary" type="button">Actualiser</button>
-        </div>
-        <div class="table-scroll" tabindex="0" role="region" aria-labelledby="audit-title">
-          <table class="plain">
-            <thead><tr><th scope="col">Date (UTC)</th><th scope="col">Lot</th><th scope="col">Décision</th><th scope="col">Écarts</th></tr></thead>
-            <tbody id="history"><tr><td colspan="4">Lecture du journal local.</td></tr></tbody>
-          </table>
-        </div>
-      </section>
+      </main>
 
       <footer class="foot">
         <a href="https://github.com/Ikel0/pacte">Code sur GitHub</a>
