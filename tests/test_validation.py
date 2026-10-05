@@ -26,6 +26,15 @@ class ValidationTests(unittest.TestCase):
         self.assertIn("uniqueness.order_id", checks)
         self.assertIn("field.order_date", checks)
 
+    def test_each_deviation_is_attached_to_its_file_line(self):
+        result = validate_batch(ROOT / "data" / "orders_quality_issues.csv", CONTRACT)
+        by_line = {item["line"]: [finding["field"] for finding in item["findings"]] for item in result["lines"]}
+        self.assertEqual(by_line[2], [])
+        self.assertEqual(by_line[3], ["order_id", "order_date", "amount_eur"])
+        self.assertEqual(by_line[4], ["customer_id", "status"])
+        reported = sum(len(fields) for fields in by_line.values())
+        self.assertEqual(reported, result["summary"]["affected_values"])
+
     def test_issue_messages_agree_in_number(self):
         result = validate_batch(ROOT / "data" / "orders_quality_issues.csv", CONTRACT)
         messages = {issue["check"]: issue["message"] for issue in result["issues"]}

@@ -9,6 +9,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+ROW_DETAIL_LIMIT = 200
 
 def count(n: int, singular: str, plural: str) -> str:
     """French agreement: 0 and 1 take the singular."""
@@ -45,6 +46,61 @@ def _valid(value: str, field: dict[str, Any]) -> bool:
     if field.get("allowed") and value not in field["allowed"]:
         return False
     return True
+
+
+def _reason(value: str, field: dict[str, Any]) -> str:
+    """Say in plain French why one value breaks its field rule, for the row table."""
+    name = field["name"]
+    if value == "":
+        return f"{name} manquant"
+    if field["type"] == "number":
+        try:
+            number = float(value)
+        except ValueError:
+            return f"{name} « {value} » n'est pas un nombre"
+        if not math.isfinite(number):
+            return f"{name} « {value} » n'est pas un nombre fini"
+        if "min" in field and number < field["min"]:
+            return f"{name} {value} inférieur au minimum {field['min']}"
+    if field["type"] == "date":
+        try:
+            date.fromisoformat(value)
+        except ValueError:
+            return f"{name} « {value} » n'est pas une date AAAA-MM-JJ"
+    return f"{name} « {value} » hors des valeurs admises"
+
+
+def _row_findings(rows: list[dict[str, Any]], headers: list[str], fields: list[dict[str, Any]], received: set[str]) -> list[dict[str, Any]]:
+    """Attach each deviation to the file line that carries it (header is line 1).
+
+    Display only: the decision is computed from the aggregated issues above.
+    """
+    first_seen: dict[str, dict[str, int]] = {}
+    lines: list[dict[str, Any]] = []
+    for index, row in enumerate(rows[:ROW_DETAIL_LIMIT]):
+        line = index + 2
+        findings: list[dict[str, str]] = []
+        for field in fields:
+            name = field["name"]
+            if name not in received:
+                continue
+            value = (row.get(name) or "").strip()
+            if not _valid(value, field):
+                severity = "critical" if field.get("required") or field["type"] != "string" else "warning"
+                findings.append({"field": name, "severity": severity, "message": _reason(value, field)})
+            if field.get("unique") and value:
+                seen = first_seen.setdefault(name, {})
+                if value in seen:
+                    findings.append(
+                        {"field": name, "severity": "critical", "message": f"{name} {value} déjà présent ligne {seen[value]}"}
+                    )
+                else:
+                    seen[value] = line
+        if row.get(None):
+            extra = len(row[None])
+            findings.append({"field": "", "severity": "critical", "message": count(extra, "valeur sans en-tête", "valeurs sans en-tête")})
+        lines.append({"line": line, "values": [(row.get(header) or "") for header in headers], "findings": findings})
+    return lines
 
 
 def _control(identifier: str, label: str, issues: list[dict[str, Any]]) -> dict[str, Any]:
@@ -130,6 +186,7 @@ def validate_batch(path: Path, contract: dict[str, Any]) -> dict[str, Any]:
         "contract_owner": contract["owner"],
         "rows": len(rows),
         "headers": headers,
+        "lines": _row_findings(rows, headers, fields, received),
         "decision": decision,
         "issues": issues,
         "controls": controls,
