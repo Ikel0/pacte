@@ -95,7 +95,10 @@ class Handler(SimpleHTTPRequestHandler):
         super().__init__(*args, directory=str(ROOT / "web"), **kwargs)
 
     def client_ip(self) -> str:
-        # Derrière le proxy de Render, l'adresse du visiteur arrive en tête de X-Forwarded-For.
+        # Adresse du visiteur posée par le proxy (True-Client-IP), sinon la première de X-Forwarded-For.
+        true_client = self.headers.get("True-Client-IP", "").strip()
+        if true_client:
+            return true_client
         forwarded = self.headers.get("X-Forwarded-For", "")
         return forwarded.split(",")[0].strip() or self.client_address[0]
 
