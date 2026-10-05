@@ -5,147 +5,121 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="Pacte contrôle des exports CSV de démonstration avant une ingestion et rend la décision lisible."
+      content="Pacte contrôle un lot CSV contre un contrat de données versionné avant ingestion et en rend la décision avec son motif."
     />
-    <title>Pacte | Contrôle de lot avant ingestion</title>
+    <title>Pacte | Contrôle d’un lot contre son contrat</title>
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <a class="skip-link" href="#workbench">Aller au contrôle du lot</a>
-    <main>
-      <header class="masthead">
-        <div class="brand-line">
-          <a class="brand" href="/" aria-label="Pacte, accueil">
-            <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
-            <span>Pacte</span>
-          </a>
-          <p class="mode">Démonstration locale</p>
-        </div>
+    <a class="skip-link" href="#controle">Aller au contrôle du lot</a>
+    <div class="page">
+      <nav class="back" aria-label="Retour">
+        <a href="https://ikel0.github.io/">← Portfolio</a>
+      </nav>
 
-        <div class="masthead-grid">
-          <div class="masthead-copy">
-            <h1>Vérifier un lot avant ingestion</h1>
-            <p class="lede">
-              Trois exports de commandes permettent de voir ce qui est accepté, ce qui doit être revu et ce qui doit rester de côté.
-            </p>
-          </div>
-
-          <aside class="contract-card" aria-labelledby="contract-title">
-            <p class="section-label">Contrat actif</p>
-            <h2 id="contract-title">Chargement du contrat</h2>
-            <p id="contractDescription" class="contract-description">Lecture des règles locales du contrat.</p>
-            <dl class="contract-facts" id="contractFacts"></dl>
-          </aside>
-        </div>
+      <header class="head">
+        <h1>Pacte <span>contrôle un lot CSV contre son contrat de données avant de l’ingérer, puis rend une décision motivée.</span></h1>
       </header>
 
-      <section class="workbench" id="workbench" aria-labelledby="run-title">
-        <div class="section-heading workbench-heading">
-          <div>
-            <h2 id="run-title">Exécuter les contrôles</h2>
-          </div>
-          <p class="workbench-note">Aucun upload et aucune donnée personnelle. Le lot choisi est un CSV synthétique inclus dans le dépôt.</p>
+      <section class="run" id="controle" aria-label="Lancer un contrôle">
+        <div class="run-field">
+          <label for="batch">Lot à contrôler</label>
+          <select id="batch" aria-describedby="batchHelp"></select>
         </div>
-
-        <div class="run-card">
-          <div class="batch-picker">
-            <label for="batch">Lot source</label>
-            <select id="batch" aria-describedby="batchHelp"></select>
-            <small id="batchHelp">Jeux de données de démonstration inclus dans le projet.</small>
-          </div>
-          <button id="validate" type="button">
-            <span>Lancer les contrôles</span>
-          </button>
-        </div>
-        <p class="request-status" id="requestStatus" role="status" aria-live="polite"></p>
+        <button id="validate" type="button">Lancer les contrôles</button>
+        <p id="batchHelp" class="run-help">Trois exports de commandes synthétiques, inclus dans le dépôt. Rien n’est envoyé ni écrit ailleurs.</p>
+        <p class="run-status" id="requestStatus" role="status" aria-live="polite"></p>
       </section>
 
-      <section id="result" class="result" hidden aria-labelledby="decision-title">
-        <div class="decision-card" id="decisionCard">
-          <div class="decision-heading">
-            <div>
-              <h2 id="decision-title">Décision sur le lot</h2>
-            </div>
-            <span id="decisionState" class="decision-state">En attente</span>
-          </div>
-          <div class="decision-body">
-            <strong id="decision">En attente</strong>
-            <p id="decisionExplanation">Choisissez un lot pour voir les règles déclenchées et l’action prévue.</p>
-          </div>
-          <dl class="decision-facts" id="decisionFacts"></dl>
+      <article id="result" class="doc pv" hidden aria-labelledby="pv-title" tabindex="-1">
+        <h2 id="pv-title" class="doc-title">Procès-verbal de contrôle</h2>
+        <p class="doc-meta" id="pvMeta"></p>
+
+        <div class="decision" id="decisionBlock">
+          <p class="decision-line" id="decision"></p>
+          <p class="decision-reason" id="decisionReason"></p>
         </div>
 
-        <div class="result-grid">
-          <section class="detail-panel" aria-labelledby="checks-title">
-            <div class="panel-heading">
-              <div>
-                <h2 id="checks-title">Règles déclenchées</h2>
-              </div>
-              <span id="checksSummary" class="panel-summary"></span>
-            </div>
-            <div id="issues" class="check-list" aria-live="polite"></div>
-          </section>
-
-          <section class="detail-panel impact-panel" aria-labelledby="impact-title">
-            <div class="panel-heading">
-              <div>
-                <h2 id="impact-title">Ce qui doit attendre</h2>
-              </div>
-              <span class="panel-summary">Dépendances du contrat</span>
-            </div>
-            <p class="impact-intro">Cette liste vient du contrat. Elle ne prétend pas découvrir automatiquement toutes les dépendances de la plateforme.</p>
-            <div id="impact" class="impact-list" aria-live="polite"></div>
-          </section>
-        </div>
-
-        <section class="receipt" aria-labelledby="receipt-title">
-          <div>
-            <h2 id="receipt-title">Reçu de cette exécution</h2>
-            <p id="receiptText">Le résultat sera enregistré dans le journal local une fois le contrôle terminé.</p>
+        <section class="doc-section" aria-labelledby="lines-title">
+          <h3 id="lines-title">Lignes contrôlées</h3>
+          <p class="section-note" id="linesNote"></p>
+          <div class="table-scroll" tabindex="0" role="region" aria-labelledby="lines-title">
+            <table class="lines" id="linesTable"></table>
           </div>
-          <span id="receiptId" class="receipt-id">En attente</span>
         </section>
-      </section>
 
-      <section class="contract-brief" aria-labelledby="contract-brief-title">
-        <div class="section-heading">
-          <div>
-            <h2 id="contract-brief-title">Ce que l’export doit respecter</h2>
+        <section class="doc-section" aria-labelledby="checks-title">
+          <h3 id="checks-title">Contrôles</h3>
+          <table class="plain">
+            <thead><tr><th scope="col">Contrôle</th><th scope="col">Résultat</th><th scope="col" class="num">Écarts</th></tr></thead>
+            <tbody id="checksBody"></tbody>
+          </table>
+        </section>
+
+        <section class="doc-section" aria-labelledby="impact-title">
+          <h3 id="impact-title">Suite pour les consommateurs déclarés</h3>
+          <div class="table-scroll" tabindex="0" role="region" aria-labelledby="impact-title">
+            <table class="plain">
+              <thead><tr><th scope="col">Consommateur</th><th scope="col">Niveau</th><th scope="col">Suite donnée</th></tr></thead>
+              <tbody id="impactBody"></tbody>
+            </table>
           </div>
-          <p id="contractVersion" class="version-chip">Version en chargement</p>
+          <p class="section-note">Liste tirée du contrat, pas d’une découverte automatique des dépendances.</p>
+        </section>
+
+        <section class="doc-section" aria-labelledby="receipt-title">
+          <h3 id="receipt-title">Reçu</h3>
+          <table class="record"><tbody id="receiptBody"></tbody></table>
+          <p class="section-note" id="receiptNote"></p>
+        </section>
+      </article>
+
+      <article class="doc contract" aria-labelledby="contract-title">
+        <h2 id="contract-title" class="doc-title">Contrat en cours de lecture</h2>
+        <p class="doc-meta" id="contractMeta">Lecture du contrat local.</p>
+        <p class="doc-lede" id="contractDescription"></p>
+
+        <section class="doc-section" aria-labelledby="c-fields">
+          <h3 id="c-fields">1. Champs</h3>
+          <div id="contractFields"></div>
+        </section>
+
+        <section class="doc-section" aria-labelledby="c-rules">
+          <h3 id="c-rules">2. Règles</h3>
+          <ol class="rules" id="contractRules"></ol>
+        </section>
+
+        <section class="doc-section" aria-labelledby="c-fresh">
+          <h3 id="c-fresh">3. Fraîcheur</h3>
+          <p id="freshnessNote"></p>
+        </section>
+
+        <section class="doc-section" aria-labelledby="c-consumers">
+          <h3 id="c-consumers">4. Consommateurs déclarés</h3>
+          <div id="contractConsumers"></div>
+        </section>
+      </article>
+
+      <section class="journal" aria-labelledby="audit-title">
+        <div class="journal-head">
+          <h2 id="audit-title">Contrôles déjà enregistrés</h2>
+          <button id="refreshAudit" class="secondary" type="button">Actualiser</button>
         </div>
-        <div id="contractControls" class="contract-table-wrap" aria-live="polite">
-          <p class="loading-copy">Chargement des contrôles du contrat...</p>
+        <div class="table-scroll" tabindex="0" role="region" aria-labelledby="audit-title">
+          <table class="plain">
+            <thead><tr><th scope="col">Date (UTC)</th><th scope="col">Lot</th><th scope="col">Décision</th><th scope="col">Écarts</th></tr></thead>
+            <tbody id="history"><tr><td colspan="4">Lecture du journal local.</td></tr></tbody>
+          </table>
         </div>
-        <p id="freshnessNote" class="contract-note">La fraîcheur est déclarée dans le contrat, mais les CSV fournis ne contiennent pas d’horodatage de livraison.</p>
       </section>
 
-      <section class="audit" aria-labelledby="audit-title">
-        <div class="section-heading audit-heading">
-          <div>
-            <p class="section-label">Journal local</p>
-            <h2 id="audit-title">Exécutions récentes</h2>
-          </div>
-          <button id="refreshAudit" class="refresh-button" type="button">Actualiser</button>
-        </div>
-        <div class="audit-table-labels" aria-hidden="true">
-          <span>Date</span><span>Lot</span><span>Décision</span><span>Écarts</span>
-        </div>
-        <div id="history" class="audit-list" aria-live="polite">
-          <p class="loading-copy">Chargement du journal...</p>
-        </div>
-      </section>
-
-      <footer>
-        <p>Contrat JSON · CSV synthétiques · Reçu SQLite local</p>
-        <p>Jeu de démonstration. Aucune écriture ni alerte externe.</p>
-        <a href="https://github.com/Ikel0">Ikel Ouedraogo</a>
+      <footer class="foot">
+        <a href="https://github.com/Ikel0/pacte">Code sur GitHub</a>
+        <span>Données : exports de commandes synthétiques dans <code>data/</code>.</span>
+        <span>Reçus conservés dans un SQLite local, sans écriture ni alerte externe.</span>
       </footer>
-    </main>
+    </div>
     <script src="app.js" defer></script>
   </body>
 </html>

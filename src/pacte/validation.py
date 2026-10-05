@@ -66,7 +66,7 @@ def _reason(value: str, field: dict[str, Any]) -> str:
         try:
             date.fromisoformat(value)
         except ValueError:
-            return f"{name} « {value} » n'est pas une date AAAA-MM-JJ"
+            return f"{name} « {value} » n'est pas une date valide"
     return f"{name} « {value} » hors des valeurs admises"
 
 
