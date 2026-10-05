@@ -95,12 +95,13 @@ class Handler(SimpleHTTPRequestHandler):
         super().__init__(*args, directory=str(ROOT / "web"), **kwargs)
 
     def client_ip(self) -> str:
-        # Adresse du visiteur posée par le proxy (True-Client-IP), sinon la première de X-Forwarded-For.
+        # Adresse posée par le proxy (True-Client-IP), sinon la dernière valeur de
+        # X-Forwarded-For, ajoutée par le proxy et non par le client.
         true_client = self.headers.get("True-Client-IP", "").strip()
         if true_client:
             return true_client
         forwarded = self.headers.get("X-Forwarded-For", "")
-        return forwarded.split(",")[0].strip() or self.client_address[0]
+        return forwarded.split(",")[-1].strip() or self.client_address[0]
 
     def send_json(self, payload: object, status: HTTPStatus = HTTPStatus.OK) -> None:
         encoded = json.dumps(payload, ensure_ascii=False).encode("utf-8")
